@@ -1,24 +1,25 @@
-/* Includes ----------------------------------------------------------*/
+/*
+ * tcp_loopback.c
+ *
+ */
 #include "settings.h"
 
+#if CURRENT_TEST == TCP_LOOPBACK
+
+/* Includes ----------------------------------------------------------*/
+#include "tcp_loopback_simple.h"
+#include "lwip.h"
 
 #if LWIP_IMPLEMENTATION == RAW_API
 #include "lwip/tcp.h"
-#include "lwip/udp.h"
 #include "lwip/ip_addr.h"
 #include "lwip/netif.h"
-#include <string.h> // memcpy
 #else
 #include <socket.h>
 #endif
 
 #include <stdio.h>
-#include "lwip.h"
-#if  CURRENT_TEST == TCP_LOOPBACK_MULTITASK
-#include "FreeRTOS.h"
-#include "queue.h"
-#endif
-#include "freertos_exports.h"
+
 /* Defines -----------------------------------------------------------*/
 
 /* Typedef -----------------------------------------------------------*/
@@ -35,8 +36,6 @@ struct tcp_client_ctx
 #endif
 
 /* Variables ---------------------------------------------------------*/
-const char message[MESSAGE_SIZE] = { [0 ... ( MESSAGE_SIZE - 1 )] = 1 };
-char recv_message[MESSAGE_SIZE];
 
 #if LWIP_IMPLEMENTATION == RAW_API
 static struct tcp_pcb* client_pcb;
@@ -45,72 +44,40 @@ int sockfd;
 #endif
 
 /* Function prototypes -----------------------------------------------*/
-#if ( CURRENT_TEST == TCP_LOOPBACK ) && ( LWIP_IMPLEMENTATION == RAW_API )
+#if LWIP_IMPLEMENTATION == RAW_API
 static err_t tcp_client_connected( void* arg , struct tcp_pcb* tpcb , err_t err );
 static err_t tcp_client_recv( void* arg , struct tcp_pcb* tpcb , struct pbuf* p , err_t err );
 static err_t tcp_client_sent( void* arg , struct tcp_pcb* tpcb , u16_t len );
 static void tcp_client_err( void* arg , err_t err );
 #endif
 
-/* Functions ---------------------------------------------------------*/
-#if CURRENT_TEST == UDP_TX_BENCHMARK
-/**
- * @brief  UDP transmit test.
- * @retval None
- */
-void udp_tx_benchmark()
+/* Functions -----------------------------------------------*/
+void tcp_set_up()
 {
-	/* Init UDP connection */
-#if LWIP_IMPLEMENTATION == RAW_API
-	ip_addr_t PC_IPADDR;
-	IP4_ADDR( &PC_IPADDR , ETH_SERVER_IP_1 , ETH_SERVER_IP_2 , ETH_SERVER_IP_3 , ETH_SERVER_IP_4 );
-
-	struct udp_pcb* my_udp = udp_new();
-	udp_connect( my_udp , &PC_IPADDR , ETH_SERVER_PORT );
-
-#else
-	sockfd = socket( AF_INET , SOCK_DGRAM , 0 );
-
+#if LWIP_IMPLEMENTATION == SOCKET_API
 	struct sockaddr_in addr;
 	memset( &addr , 0 , sizeof( addr ) );
 
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons( ETH_SERVER_PORT );
 	addr.sin_addr.s_addr = inet_addr( ETH_SERVER_IP );
-#endif
 
-	osDelay( 200 );
-	printf( "IP: %s\n"    , ipaddr_ntoa( &gnetif.ip_addr ) );
-	printf( "Mask: %s\n"  , ipaddr_ntoa( &gnetif.netmask ) );
-	printf( "GW: %s\n"    , ipaddr_ntoa( &gnetif.gw ) );
-	printf( "netif: %d\n" , netif_is_up( &gnetif ) );
-	printf( "Link: %d\n"  , netif_is_link_up( &gnetif ) );
+	sockfd = lwip_socket( AF_INET , SOCK_STREAM , IPPROTO_TCP );
+	if( sockfd == -1 )
+		printf( "failed to create socket, errno = %d\n" , errno );
 
-	for( ; ; )
-	{
-#if LWIP_IMPLEMENTATION == RAW_API
-		struct pbuf* udp_buffer = udp_buffer = pbuf_alloc( PBUF_TRANSPORT , MESSAGE_SIZE , PBUF_RAM );
+	while( !netif_is_up( &gnetif ) || !netif_is_link_up( &gnetif ) )
+		osDelay( 250 );
 
-		if( udp_buffer != NULL )
-		{
-			memcpy( udp_buffer->payload , message , MESSAGE_SIZE );
-			LOCK_TCPIP_CORE();
-			udp_send( my_udp , udp_buffer );
-			UNLOCK_TCPIP_CORE();
-			pbuf_free( udp_buffer );
-		}
-#else
-		sendto( sockfd , message , MESSAGE_SIZE , 0 , (struct sockaddr* )&addr , sizeof( addr ) );
-#endif
-	}
-}
-#endif
+	osDelay( 1000 );
 
-#if ( CURRENT_TEST == TCP_LOOPBACK_MULTITASK ) || ( CURRENT_TEST == TCP_LOOPBACK )
-void tcp_set_up()
-{
-#if LWIP_IMPLEMENTATION == RAW_API
+	// TODO: Investigate why sometimes blocks indefinitely here. Increasing the above osDelay seems to alleviate the issue.
+	// Maybe we need for something else to be set up before trying to connect
+	int ret = lwip_connect( sockfd , (const struct sockaddr*) &addr , sizeof( addr ) );
+	if( ret < 0 )
+		printf( "failed to connect socket, errno = %d\n" , errno );
 
+#elif LWIP_IMPLEMENTATION == RAW_API
 	ip_addr_t server_ip;
 
 	IP4_ADDR( &server_ip , ETH_SERVER_IP_1 , ETH_SERVER_IP_2 , ETH_SERVER_IP_3 , ETH_SERVER_IP_4 );
@@ -137,29 +104,7 @@ void tcp_set_up()
 		tcp_abort( client_pcb );
 	}
 
-#else
-	struct sockaddr_in addr;
-	memset( &addr , 0 , sizeof( addr ) );
-
-	addr.sin_family = AF_INET;
-	addr.sin_port = htons( ETH_SERVER_PORT );
-	addr.sin_addr.s_addr = inet_addr( ETH_SERVER_IP );
-
-	sockfd = lwip_socket( AF_INET , SOCK_STREAM , IPPROTO_TCP );
-	if( sockfd == -1 )
-		printf( "failed to create socket, errno = %d\n" , errno );
-
-	while( !netif_is_up( &gnetif ) || !netif_is_link_up( &gnetif ) )
-		osDelay( 250 );
-
-	osDelay( 1000 );
-
-	// TODO: Investigate why sometimes blocks indefinitely here. Increasing the above osDelay seems to alleviate the issue.
-	// Maybe we need for something else to be set up before trying to connect
-	int ret = lwip_connect( sockfd , (const struct sockaddr*) &addr , sizeof( addr ) );
-	if( ret < 0 )
-		printf( "failed to connect socket, errno = %d\n" , errno );
-#endif
+#endif // LWIP_IMPLEMENTATION == RAW_API
 
 	printf( "IP: %s\n" , ipaddr_ntoa( &gnetif.ip_addr ) );
 	printf( "Mask: %s\n" , ipaddr_ntoa( &gnetif.netmask ) );
@@ -167,9 +112,7 @@ void tcp_set_up()
 	printf( "netif: %d\n" , netif_is_up( &gnetif ) );
 	printf( "Link: %d\n" , netif_is_link_up( &gnetif ) );
 }
-#endif
 
-#if CURRENT_TEST == TCP_LOOPBACK
 #if LWIP_IMPLEMENTATION == SOCKET_API
 /**
  * @brief  TCP loopback test.
@@ -179,12 +122,12 @@ void tcp_loopback()
 {
 	for( ; ; )
 	{
+		static char recv_message[MESSAGE_SIZE];
 		// TODO: convert this to use select
 		volatile ssize_t read_len = lwip_read( sockfd , recv_message , MESSAGE_SIZE );
 		volatile ssize_t write_len = lwip_write( sockfd , recv_message , read_len );
 	}
 }
-
 #elif LWIP_IMPLEMENTATION == RAW_API
 void enqueue_pbuf( struct tcp_client_ctx* ctx , struct pbuf* p )
 {
@@ -340,84 +283,5 @@ err_t tcp_client_sent( void* arg , struct tcp_pcb* tpcb , u16_t len )
 	return ERR_OK;
 }
 #endif // LWIP_IMPLEMENTATION == RAW_API
+
 #endif // CURRENT_TEST == TCP_LOOPBACK
-
-#if CURRENT_TEST == TCP_LOOPBACK_MULTITASK
-void tcp_rx()
-{
-	uint8_t msg_prio = 0;
-
-	for( ; ; )
-	{
-		network_message_t* message;
-
-		// Get free buffer
-		if( osMessageQueueGet( network_message_free , &message , &msg_prio , osWaitForever ) != osOK )
-			continue;
-
-		// Get message
-		size_t received_bytes = 0;
-
-		while( received_bytes < MESSAGE_SIZE )
-		{
-			int ret = lwip_read( sockfd , message->buffer.data + received_bytes , MESSAGE_SIZE - received_bytes );
-
-			if( ret <= 0 )
-			{
-				// connection closed, send message to the following task
-				message->type = CLOSED;
-				osMessageQueuePut( network_message_rx_to_tx , &message , msg_prio , osWaitForever );
-				return;
-			}
-			received_bytes += ret;
-		}
-
-		message->type = DATA;
-		message->buffer.len = received_bytes;
-
-		// Notify next task that data is available
-		osMessageQueuePut( network_message_rx_to_tx , &message , msg_prio , osWaitForever );
-	}
-}
-
-void tcp_tx()
-{
-	uint8_t msg_prio = 0;
-
-	for( ; ; )
-	{
-		network_message_t* message;
-
-		// Wait until a message is available
-		if( osMessageQueueGet( network_message_rx_to_tx , &message , &msg_prio , osWaitForever ) != osOK )
-			continue;
-
-		if( message->type == CLOSED )
-		{
-			// connection closed, return message to queue
-			osMessageQueuePut( network_message_free , &message , msg_prio , 0 );
-			return;
-		}
-
-		// Transmit it back
-		size_t sent_bytes = 0;
-
-		while( sent_bytes < message->buffer.len )
-		{
-			int ret = lwip_write( sockfd , message->buffer.data + sent_bytes , message->buffer.len - sent_bytes );
-
-			if( ret <= 0 )
-			{
-				// connection closed, return message to queue
-				osMessageQueuePut( network_message_free , &message , msg_prio , 0 );
-				return;
-			}
-
-			sent_bytes += ret;
-		}
-
-		// Return buffer to pool
-		osMessageQueuePut( network_message_free , &message , msg_prio , osWaitForever );
-	}
-}
-#endif

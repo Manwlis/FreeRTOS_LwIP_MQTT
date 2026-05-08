@@ -27,11 +27,13 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "settings.h"
-#include "freertos_exports.h"
-#include "ethernet_tests.h"
 
-#if CURRENT_TEST == TCP_LOOPBACK_MULTITASK
-#include "queue.h" // vQueueAddToRegistry
+#if CURRENT_TEST == UDP_TX_BENCHMARK
+#include "udp_test.h"
+#elif CURRENT_TEST == TCP_LOOPBACK
+#include "tcp_loopback_simple.h"
+#elif CURRENT_TEST == TCP_LOOPBACK_MULTITASK
+#include "tcp_loopback_multitask.h"
 #endif
 /* USER CODE END Includes */
 
@@ -55,10 +57,6 @@
 #if CURRENT_TEST == TCP_LOOPBACK_MULTITASK
 osThreadId_t tx_task_handle;
 const osThreadAttr_t tx_task_attributes = { .name = "tx_task" , .stack_size = 256 * 4 , .priority = (osPriority_t) osPriorityNormal1 , };
-
-osMessageQueueId_t network_message_free;
-osMessageQueueId_t network_message_rx_to_tx;
-static network_message_t network_message_pool[NUM_NETWORK_MESSAGES];
 #endif
 
 /* USER CODE END Variables */
@@ -127,19 +125,7 @@ void MX_FREERTOS_Init(void) {
 
   /* USER CODE BEGIN RTOS_QUEUES */
 #if CURRENT_TEST == TCP_LOOPBACK_MULTITASK
-	// initialize queues
-	network_message_free = osMessageQueueNew( NUM_NETWORK_MESSAGES , sizeof(network_message_t*) , NULL );
-	network_message_rx_to_tx = osMessageQueueNew( NUM_NETWORK_MESSAGES , sizeof(network_message_t*) , NULL );
-
-	for( int i = 0 ; i < NUM_NETWORK_MESSAGES ; i++ )
-	{
-		network_message_t* message = &network_message_pool[i];
-		osMessageQueuePut( network_message_free , &message , 0 , 0 ); // this calls xQueueSendToBack, maybe we need xQueueSend?
-	}
-
-	// So we can monitor them with the debugger
-	vQueueAddToRegistry( network_message_free , "network_msg_free" );
-	vQueueAddToRegistry( network_message_rx_to_tx , "network_msg_rx_to_tx" );
+	set_up_queues();
 #endif
   /* USER CODE END RTOS_QUEUES */
 
