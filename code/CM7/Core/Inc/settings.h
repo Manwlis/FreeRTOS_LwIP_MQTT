@@ -26,4 +26,7 @@
 // other
 #if CURRENT_TEST == TCP_LOOPBACK_MULTITASK
 #define NUM_NETWORK_MESSAGES 16
+
+#include <assert.h>
+_Static_assert( LWIP_IMPLEMENTATION == SOCKET_API , "TCP_LOOPBACK_MULTITASK has only SOCKET_API implementation!" );
 #endif
