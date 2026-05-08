@@ -1,17 +1,24 @@
 /* Includes ----------------------------------------------------------*/
 #include "settings.h"
 
+
 #if LWIP_IMPLEMENTATION == RAW_API
 #include "lwip/tcp.h"
+#include "lwip/udp.h"
 #include "lwip/ip_addr.h"
 #include "lwip/netif.h"
+#include <string.h> // memcpy
 #else
 #include <socket.h>
 #endif
 
 #include <stdio.h>
 #include "lwip.h"
-
+#if  CURRENT_TEST == TCP_LOOPBACK_MULTITASK
+#include "FreeRTOS.h"
+#include "queue.h"
+#endif
+#include "freertos_exports.h"
 /* Defines -----------------------------------------------------------*/
 
 /* Typedef -----------------------------------------------------------*/
@@ -27,18 +34,6 @@ struct tcp_client_ctx
 };
 #endif
 
-#if CURRENT_TEST == TCP_LOOPBACK_MULTITASK
-typedef struct
-{
-	enum type_t { DATA , CLOSED } type;
-	struct network_mbuf_t
-	{
-		size_t len;
-		uint8_t data[MESSAGE_SIZE];
-	} buffer; // buffer for the messages received from the network
-} network_message_t;
-#endif
-
 /* Variables ---------------------------------------------------------*/
 const char message[MESSAGE_SIZE] = { [0 ... ( MESSAGE_SIZE - 1 )] = 1 };
 char recv_message[MESSAGE_SIZE];
@@ -47,12 +42,6 @@ char recv_message[MESSAGE_SIZE];
 static struct tcp_pcb* client_pcb;
 #else
 int sockfd;
-#endif
-
-#if CURRENT_TEST == TCP_LOOPBACK_MULTITASK
-extern osMessageQueueId_t network_message_free;
-extern osMessageQueueId_t network_message_rx_to_tx;
-static network_message_t network_message_pool[NUM_NETWORK_MESSAGES];
 #endif
 
 /* Function prototypes -----------------------------------------------*/
@@ -69,7 +58,7 @@ static void tcp_client_err( void* arg , err_t err );
  * @brief  UDP transmit test.
  * @retval None
  */
-static inline void udp_tx_benchmark()
+void udp_tx_benchmark()
 {
 	/* Init UDP connection */
 #if LWIP_IMPLEMENTATION == RAW_API
@@ -118,7 +107,7 @@ static inline void udp_tx_benchmark()
 #endif
 
 #if ( CURRENT_TEST == TCP_LOOPBACK_MULTITASK ) || ( CURRENT_TEST == TCP_LOOPBACK )
-static void tcp_set_up()
+void tcp_set_up()
 {
 #if LWIP_IMPLEMENTATION == RAW_API
 
@@ -186,7 +175,7 @@ static void tcp_set_up()
  * @brief  TCP loopback test.
  * @retval None
  */
-static inline void tcp_loopback()
+void tcp_loopback()
 {
 	for( ; ; )
 	{
@@ -197,7 +186,7 @@ static inline void tcp_loopback()
 }
 
 #elif LWIP_IMPLEMENTATION == RAW_API
-static void enqueue_pbuf( struct tcp_client_ctx* ctx , struct pbuf* p )
+void enqueue_pbuf( struct tcp_client_ctx* ctx , struct pbuf* p )
 {
 	p->next = NULL;
 
@@ -223,7 +212,7 @@ static struct pbuf* dequeue_pbuf( struct tcp_client_ctx* ctx )
 	return p;
 }
 
-static void try_send( struct tcp_client_ctx* ctx )
+void try_send( struct tcp_client_ctx* ctx )
 {
 	struct tcp_pcb* tpcb = ctx->pcb;
 
@@ -269,7 +258,7 @@ static void try_send( struct tcp_client_ctx* ctx )
  * @brief  TCP error callback.
  * @retval None
  */
-static void tcp_client_err( void* arg , err_t err )
+void tcp_client_err( void* arg , err_t err )
 {
 	UNUSED( arg );
 	UNUSED( err );
@@ -282,7 +271,7 @@ static void tcp_client_err( void* arg , err_t err )
  * @brief  TCP connect callback.
  * @retval err_t error code
  */
-static err_t tcp_client_connected( void* arg , struct tcp_pcb* tpcb , err_t err )
+err_t tcp_client_connected( void* arg , struct tcp_pcb* tpcb , err_t err )
 {
 	UNUSED( arg );
 	UNUSED( err );
@@ -305,7 +294,7 @@ static err_t tcp_client_connected( void* arg , struct tcp_pcb* tpcb , err_t err 
  * @brief  TCP recv callback. Implements loopback
  * @retval err_t error code
  */
-static err_t tcp_client_recv( void* arg , struct tcp_pcb* tpcb , struct pbuf* p , err_t err )
+err_t tcp_client_recv( void* arg , struct tcp_pcb* tpcb , struct pbuf* p , err_t err )
 {
 	UNUSED( err );
 
@@ -338,7 +327,7 @@ static err_t tcp_client_recv( void* arg , struct tcp_pcb* tpcb , struct pbuf* p 
  * @brief  TCP send callback. Tries to send any remaining data.
  * @retval err_t error code
  */
-static err_t tcp_client_sent( void* arg , struct tcp_pcb* tpcb , u16_t len )
+err_t tcp_client_sent( void* arg , struct tcp_pcb* tpcb , u16_t len )
 {
 	UNUSED( len );
 	UNUSED( tpcb );
@@ -354,7 +343,7 @@ static err_t tcp_client_sent( void* arg , struct tcp_pcb* tpcb , u16_t len )
 #endif // CURRENT_TEST == TCP_LOOPBACK
 
 #if CURRENT_TEST == TCP_LOOPBACK_MULTITASK
-static void tcp_rx()
+void tcp_rx()
 {
 	uint8_t msg_prio = 0;
 
@@ -391,7 +380,7 @@ static void tcp_rx()
 	}
 }
 
-static void tcp_tx()
+void tcp_tx()
 {
 	uint8_t msg_prio = 0;
 

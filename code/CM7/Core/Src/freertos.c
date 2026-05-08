@@ -26,12 +26,12 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include <string.h>
-
 #include "settings.h"
-#include "tests.h"
+#include "freertos_exports.h"
+#include "ethernet_tests.h"
+
 #if CURRENT_TEST == TCP_LOOPBACK_MULTITASK
-#include "queue.h"
+#include "queue.h" // vQueueAddToRegistry
 #endif
 /* USER CODE END Includes */
 
@@ -58,6 +58,7 @@ const osThreadAttr_t tx_task_attributes = { .name = "tx_task" , .stack_size = 25
 
 osMessageQueueId_t network_message_free;
 osMessageQueueId_t network_message_rx_to_tx;
+static network_message_t network_message_pool[NUM_NETWORK_MESSAGES];
 #endif
 
 /* USER CODE END Variables */
@@ -136,6 +137,7 @@ void MX_FREERTOS_Init(void) {
 		osMessageQueuePut( network_message_free , &message , 0 , 0 ); // this calls xQueueSendToBack, maybe we need xQueueSend?
 	}
 
+	// So we can monitor them with the debugger
 	vQueueAddToRegistry( network_message_free , "network_msg_free" );
 	vQueueAddToRegistry( network_message_rx_to_tx , "network_msg_rx_to_tx" );
 #endif
