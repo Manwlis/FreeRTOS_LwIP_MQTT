@@ -3,6 +3,10 @@ name: Sync shared directory
 permissions:
   contents: write
 
+concurrency:
+  group: sync-shared
+  cancel-in-progress: false
+  
 on:
   repository_dispatch:
     types: [sync_shared]
@@ -30,10 +34,13 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-
+      
           git add code/Drivers/LIS3DHTR
-
+      
           if ! git diff --cached --quiet; then
             git commit -m "Auto-sync shared directory"
+      
+            git pull --rebase origin main
+      
             git push
           fi
