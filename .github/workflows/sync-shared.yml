@@ -1,0 +1,34 @@
+name: Sync shared directory
+
+on:
+  repository_dispatch:
+    types: [sync_shared]
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout FreeRTOS_LwIP_MQTT repo
+        uses: actions/checkout@v4
+
+      - name: Clone sensor_playground repo
+        run: |
+          git clone --depth 1 https://github.com/Manwlis/sensor_playground.git
+
+      - name: Copy directory
+        run: |
+          mkdir -p code/Drivers/LIS3DHTR
+          rsync -av --delete sensor_playground/code/CM7/Drivers/LIS3DHTR/ code/Drivers/LIS3DHTR/
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+          git add code/Drivers/LIS3DHTR
+
+          if ! git diff --cached --quiet; then
+            git commit -m "Auto-sync shared directory"
+            git push
+          fi
