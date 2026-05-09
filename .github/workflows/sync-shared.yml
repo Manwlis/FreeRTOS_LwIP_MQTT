@@ -34,13 +34,9 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-      
+
+          git pull origin main
           git add code/Drivers/LIS3DHTR
+          git commit -m "Auto-sync shared directory"
+          git push
       
-          if ! git diff --cached --quiet; then
-            git commit -m "Auto-sync shared directory"
-      
-            git pull --rebase origin main
-      
-            git push
-          fi
