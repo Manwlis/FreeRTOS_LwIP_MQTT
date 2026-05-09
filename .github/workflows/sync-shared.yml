@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - name: Checkout FreeRTOS_LwIP_MQTT repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Clone sensor_playground repo
         run: |
@@ -37,6 +37,6 @@ jobs:
 
           git pull origin main
           git add code/Drivers/LIS3DHTR
-          git commit -m "Auto-sync shared directory"
-          git push
+          git commit -m "Auto-sync shared directory" || exit 0
+          git push origin main
       
