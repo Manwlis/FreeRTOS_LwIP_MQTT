@@ -1,8 +1,13 @@
 name: Sync shared directory
 
+permissions:
+  contents: write
+
 on:
   repository_dispatch:
     types: [sync_shared]
+
+  workflow_dispatch:
 
 jobs:
   sync:
