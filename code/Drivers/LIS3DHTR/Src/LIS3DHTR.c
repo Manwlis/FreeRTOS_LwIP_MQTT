@@ -154,7 +154,7 @@ void LIS3DHTR_set_resolution( const LIS3DHTR_device_t* const device , LIS3DHTR_o
 	LIS3DHTR_write_reg( device , LIS3DHTR_CTRL_REG4 , reg4 );
 }
 
-void LIS3DHTR_get_temp( const LIS3DHTR_device_t* const device )
+float LIS3DHTR_get_temp( const LIS3DHTR_device_t* const device )
 {
 	uint8_t ADC3_H;
 	uint8_t ADC3_L;
@@ -167,12 +167,8 @@ void LIS3DHTR_get_temp( const LIS3DHTR_device_t* const device )
 #define calibration_temp 2500
 #define q8_format_normalizer 256
 
-	int32_t temp_centi = calibration_temp + ( (int32_t) temp_raw * 100 ) / q8_format_normalizer;
-
-	int32_t temp_int = temp_centi / 100;
-	int32_t temp_frac = temp_centi % 100;
-
-	printf( "temp = %ld.%ld\n" , temp_int , (uint32_t) ( ( temp_frac < 0 ) ? -temp_frac : temp_frac ) );
+//	return calibration_temp + ( (int32_t) temp_raw * 100 ) / q8_format_normalizer;
+	return 25 + (float) temp_raw / 256;
 }
 
 void LIS3DHTR_get_acceleration( const LIS3DHTR_device_t* const device , float* x , float* y , float* z )
