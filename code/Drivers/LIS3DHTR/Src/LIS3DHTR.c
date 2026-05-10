@@ -164,11 +164,10 @@ float LIS3DHTR_get_temp( const LIS3DHTR_device_t* const device )
 	LIS3DHTR_read_reg( device , LIS3DHTR_OUT_ADC3_L , &ADC3_L );
 	temp_raw = (int16_t) ( ( ADC3_H << LIS3DHTR_REG_SIZE_BITS ) | ADC3_L );
 
-#define calibration_temp 2500
-#define q8_format_normalizer 256
+#define calibration_temp 25.0f
+#define q8_format_normalizer 256.0f
 
-//	return calibration_temp + ( (int32_t) temp_raw * 100 ) / q8_format_normalizer;
-	return 25 + (float) temp_raw / 256;
+	return calibration_temp + (float) temp_raw / q8_format_normalizer;
 }
 
 void LIS3DHTR_get_acceleration( const LIS3DHTR_device_t* const device , float* x , float* y , float* z )
