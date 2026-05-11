@@ -9,14 +9,9 @@
 #include "settings.h"
 
 #if CURRENT_TEST == TCP_LOOPBACK
-
 /* Exported functions prototypes ---------------------------------------------*/
 void tcp_set_up();
-
-#if LWIP_IMPLEMENTATION == SOCKET_API
 void tcp_loopback();
-#endif
 
-#endif
-
+#endif //CURRENT_TEST == TCP_LOOPBACK
 #endif /* TESTS_TCP_LOOPBACK_SIMPLE_H_ */

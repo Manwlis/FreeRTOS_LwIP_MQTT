@@ -5,28 +5,12 @@
 
 #define CURRENT_TEST	TCP_LOOPBACK_MULTITASK
 
-#define	RAW_API		0
-#define SOCKET_API	1
-
-#define LWIP_IMPLEMENTATION	SOCKET_API
-
 // network settings
 #define MESSAGE_SIZE	1460
 #define ETH_SERVER_PORT	55151
-
-#if LWIP_IMPLEMENTATION == RAW_API
-#define ETH_SERVER_IP_1	192
-#define ETH_SERVER_IP_2	168
-#define ETH_SERVER_IP_3	0
-#define ETH_SERVER_IP_4	1
-#else
 #define ETH_SERVER_IP	"192.168.0.1"
-#endif
 
 // other
 #if CURRENT_TEST == TCP_LOOPBACK_MULTITASK
 #define NUM_NETWORK_MESSAGES 16
-
-#include <assert.h>
-_Static_assert( LWIP_IMPLEMENTATION == SOCKET_API , "TCP_LOOPBACK_MULTITASK has only SOCKET_API implementation!" );
 #endif
