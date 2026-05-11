@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="1">
+    <builddir>test-cppcheck-build-dir</builddir>
+    <platform>arm32-wchar_t2.xml</platform>
+    <analyze-all-vs-configs>false</analyze-all-vs-configs>
+    <check-headers>true</check-headers>
+    <check-unused-templates>true</check-unused-templates>
+    <inline-suppression>true</inline-suppression>
+    <max-ctu-depth>2</max-ctu-depth>
+    <max-template-recursion>100</max-template-recursion>
+    <includedir>
+        <dir name="CM7/Core/Inc"/>
+        <dir name="CM7/LWIP/App"/>
+        <dir name="CM7/LWIP/Target"/>
+        <dir name="Middlewares/Third_Party/LwIP/src/include"/>
+        <dir name="Middlewares/Third_Party/LwIP/system"/>
+        <dir name="Drivers/STM32H7xx_HAL_Driver/Inc"/>
+        <dir name="Drivers/STM32H7xx_HAL_Driver/Inc/Legacy"/>
+        <dir name="Drivers/LIS3DHTR/Inc"/>
+        <dir name="Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2"/>
+        <dir name="Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F"/>
+        <dir name="Drivers/CMSIS/Include"/>
+        <dir name="Drivers/BSP/Components/lan8742"/>
+        <dir name="Middlewares/Third_Party/LwIP/src/include/netif/ppp"/>
+        <dir name="Drivers/BSP/STM32H7xx_Nucleo"/>
+        <dir name="Drivers/CMSIS/Device/ST/STM32H7xx/Include"/>
+        <dir name="Middlewares/Third_Party/LwIP/src/include/lwip/prot"/>
+        <dir name="Middlewares/Third_Party/LwIP/src/include/lwip"/>
+        <dir name="Middlewares/Third_Party/LwIP/src/include/lwip/priv"/>
+        <dir name="Middlewares/Third_Party/LwIP/src/include/lwip/apps"/>
+        <dir name="Middlewares/Third_Party/LwIP/src/include/netif"/>
+        <dir name="Middlewares/Third_Party/LwIP/src/include/compat/posix"/>
+        <dir name="Middlewares/Third_Party/LwIP/src/include/compat/posix/arpa"/>
+        <dir name="Middlewares/Third_Party/LwIP/src/include/compat/posix/net"/>
+        <dir name="Middlewares/Third_Party/LwIP/src/include/compat/posix/sys"/>
+        <dir name="Middlewares/Third_Party/LwIP/src/include/compat/stdc"/>
+        <dir name="Middlewares/Third_Party/LwIP/system/arch"/>
+        <dir name="Drivers/CMSIS/Include"/>
+        <dir name="CM7/Core/ThreadSafe"/>
+        <dir name="CM7/Core/tests"/>
+        <dir name="Drivers/LIS3DHTR/Inc"/>
+        <dir name="Drivers/LIS3DHTR/Src"/>
+        <dir name="CM7/Core/Src/"/>
+        <dir name="Drivers/CMSIS/RTOS2/Include/"/>
+        <dir name="Middlewares/Third_Party/FreeRTOS/Source/include/"/>
+        <dir name="C:/ST/STM32CubeIDE_2.1.1/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.14.3.rel1.win32_1.0.100.202602081740/tools/arm-none-eabi/include/"/>
+        <dir name="C:/ST/STM32CubeIDE_2.1.1/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.14.3.rel1.win32_1.0.100.202602081740/tools/arm-none-eabi/include/newlib-nano/"/>
+        <dir name="C:/ST/STM32CubeIDE_2.1.1/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.14.3.rel1.win32_1.0.100.202602081740/tools/lib/gcc/arm-none-eabi/14.3.1/include/"/>
+        <dir name="C:/ST/STM32CubeIDE_2.1.1/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.14.3.rel1.win32_1.0.100.202602081740/tools/lib/gcc/arm-none-eabi/14.3.1/include-fixed/"/>
+    </includedir>
+    <defines>
+        <define name="__GNUC__"/>
+        <define name="__VFP_FP__"/>
+        <define name="__IEEE_LITTLE_ENDIAN"/>
+        <define name="__INTPTR_TYPE__=int"/>
+        <define name="__INT32_TYPE__=long int"/>
+        <define name="DEBUG"/>
+        <define name="CORE_CM7"/>
+        <define name="USE_HAL_DRIVER"/>
+        <define name="STM32H755xx"/>
+        <define name="USE_PWR_DIRECT_SMPS_SUPPLY"/>
+        <define name="STM32_THREAD_SAFE_STRATEGY=4"/>
+    </defines>
+    <exclude>
+        <path name="Middlewares/"/>
+        <path name="Drivers/STM32H7xx_HAL_Driver/"/>
+        <path name="Drivers/CMSIS/"/>
+        <path name="Drivers/BSP/"/>
+        <path name="C:/ST/STM32CubeIDE_2.1.1/STM32CubeIDE/plugins/"/>
+        <path name="Drivers/CMSIS/Include/"/>
+        <path name="Drivers/CMSIS/Include/*"/>
+        <path name="ThreadSafe/"/>
+        <path name="Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F"/>
+        <path name="C:/ST/STM32CubeIDE_2.1.1/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.14.3.rel1.win32_1.0.100.202602081740/tools/arm-none-eabi/include/"/>
+        <path name="Drivers/CMSIS/Include/"/>
+        <path name="Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F/portmacro.h"/>
+    </exclude>
+    <check-level-exhaustive/>
+    <project-name>test</project-name>
+</project>

@@ -89,7 +89,6 @@ int main(void)
   /* USER CODE END 1 */
 /* USER CODE BEGIN Boot_Mode_Sequence_0 */
 #if defined(DUAL_CORE_BOOT_SYNC_SEQUENCE)
-	int32_t timeout;
 #endif /* DUAL_CORE_BOOT_SYNC_SEQUENCE */
 /* USER CODE END Boot_Mode_Sequence_0 */
 

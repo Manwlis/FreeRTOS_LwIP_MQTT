@@ -9,6 +9,7 @@ Debug/
 debug/
 Release/
 release
+test-cppcheck-build-dir
 
 # Prerequisites
 *.d

@@ -88,7 +88,6 @@ unsigned long getRunTimeCounterValue(void);
 /* Functions needed when configGENERATE_RUN_TIME_STATS is on */
 __weak void configureTimerForRunTimeStats(void)
 {
-	extern volatile unsigned long ulHighFrequencyTimerTicks;
     ulHighFrequencyTimerTicks = 0;
 	extern TIM_HandleTypeDef htim17;
 	HAL_TIM_Base_Start_IT(&htim17);
