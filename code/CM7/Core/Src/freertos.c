@@ -21,12 +21,12 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "main.h"
-#include "FreeRTOS.h"
 #include "cmsis_os2.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "settings.h"
+#include "stm32h7xx_it.h" // for the RUN_TIME_STATS
 
 #if CURRENT_TEST == UDP_TX_BENCHMARK
 #include "udp_test.h"
@@ -94,7 +94,6 @@ __weak void configureTimerForRunTimeStats(void)
 	HAL_TIM_Base_Start_IT(&htim17);
 }
 
-extern volatile unsigned long ulHighFrequencyTimerTicks; // TODO: this should be here, look for it with .h include
 __weak unsigned long getRunTimeCounterValue(void)
 {
 	return ulHighFrequencyTimerTicks;

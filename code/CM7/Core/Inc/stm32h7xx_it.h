@@ -37,7 +37,6 @@ extern "C" {
 
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
-
 /* USER CODE END EC */
 
 /* Exported macro ------------------------------------------------------------*/
@@ -58,6 +57,7 @@ void ETH_IRQHandler(void);
 void TIM17_IRQHandler(void);
 /* USER CODE BEGIN EFP */
 
+extern volatile unsigned long ulHighFrequencyTimerTicks;
 /* USER CODE END EFP */
 
 #ifdef __cplusplus

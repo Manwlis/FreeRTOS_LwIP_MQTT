@@ -41,7 +41,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
-volatile unsigned long ulHighFrequencyTimerTicks; // TODO: externalize this on the .h file
+volatile unsigned long ulHighFrequencyTimerTicks;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
