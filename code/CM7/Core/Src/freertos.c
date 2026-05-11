@@ -166,10 +166,14 @@ void StartDefaultTask(void *argument)
 	tcp_set_up();
 #if LWIP_IMPLEMENTATION == SOCKET_API
 	tcp_loopback();
+	tcp_destroy();
 #endif
 #elif CURRENT_TEST == TCP_LOOPBACK_MULTITASK
 	tcp_set_up();
 	tcp_rx();
+	// wait until the tx task has finished, so it doesn't try to access any resources after they are destroyed
+	osThreadFlagsWait( 0x0001U , osFlagsWaitAny , osWaitForever );
+	tcp_destroy();
 #endif
 
 	osThreadExit();
@@ -184,6 +188,7 @@ void StartTxTask( void* argument )
 	UNUSED( argument );
 
 	tcp_tx();
+	osThreadFlagsSet( defaultTaskHandle , 0x0001U );
 	osThreadExit();
 }
 #endif

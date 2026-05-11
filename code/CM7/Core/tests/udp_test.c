@@ -46,6 +46,9 @@ void udp_tx_benchmark()
 	printf( "Link: %d\n"  , netif_is_link_up( &gnetif ) );
 
 	for( ; ; )
-		sendto( sockfd , message , MESSAGE_SIZE , 0 , (struct sockaddr* )&addr , sizeof( addr ) );
+		if( sendto( sockfd , message , MESSAGE_SIZE , 0 , (struct sockaddr* )&addr , sizeof( addr ) ) == -1 )
+			break;
+
+	lwip_close( sockfd );
 }
 #endif

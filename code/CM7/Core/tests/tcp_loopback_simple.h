@@ -12,6 +12,7 @@
 /* Exported functions prototypes ---------------------------------------------*/
 void tcp_set_up();
 void tcp_loopback();
+void tcp_destroy();
 
 #endif //CURRENT_TEST == TCP_LOOPBACK
 #endif /* TESTS_TCP_LOOPBACK_SIMPLE_H_ */

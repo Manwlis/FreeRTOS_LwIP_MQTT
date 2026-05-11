@@ -67,5 +67,11 @@ void tcp_loopback()
 	}
 }
 
+void tcp_destroy()
+{
+	lwip_shutdown( sockfd , SHUT_RDWR );   // optional but recommended
+	lwip_close( sockfd );
+	sockfd = -1;
+}
 
 #endif

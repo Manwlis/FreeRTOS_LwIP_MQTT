@@ -22,6 +22,7 @@ void set_up_queues();
 void tcp_set_up();
 void tcp_rx();
 void tcp_tx();
+void tcp_destroy();
 
 #endif //CURRENT_TEST == TCP_LOOPBACK_MULTITASK
 

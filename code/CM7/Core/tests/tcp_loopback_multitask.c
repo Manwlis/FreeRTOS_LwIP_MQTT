@@ -160,4 +160,15 @@ void tcp_tx()
 	}
 }
 
+
+void tcp_destroy()
+{
+	lwip_shutdown( sockfd , SHUT_RDWR );
+	lwip_close( sockfd );
+	sockfd = -1;
+
+	osMessageQueueDelete( network_message_free );
+	osMessageQueueDelete( network_message_rx_to_tx );
+}
+
 #endif
