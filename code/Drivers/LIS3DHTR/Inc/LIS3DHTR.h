@@ -9,10 +9,13 @@
 #define INC_LIS3DHTR_H_
 
 /* Includes ------------------------------------------------------------------*/
-#include <stdint.h>
 #include "LIS3DHTR_types.h"
 #ifdef DEBUG_LIS3DHTR
 #include <stdio.h>
+#endif
+
+#if LIS3DHTR_IO_MODE == IO_MODE_NON_BLOCKING
+#include "cmsis_os2.h"
 #endif
 
 /* Macros ------------------------------------------------------------------*/
@@ -38,19 +41,38 @@ void LIS3DHTR_get_acceleration( const LIS3DHTR_device_t* const device , float* x
 void LIS3DHTR_set_resolution( const LIS3DHTR_device_t* const device , LIS3DHTR_output_resolution_t resolution );
 
 /* Inline functions ---------------------------------------------*/
-
+/**
+ * @brief
+ * @param
+ * @param
+ * @retval
+ */
 #define reg_get_field( reg , field ) ( _reg_get_field( reg , field##_mask , field##_pos ) )
 inline uint8_t _reg_get_field( uint8_t reg , uint8_t field_mask , uint8_t field_pos )
 {
 	return ( reg & field_mask ) >> field_pos;
 }
 
+/**
+ * @brief
+ * @param
+ * @param
+ * @param
+ * @retval
+ */
 #define reg_set_field( reg , field , value )( _reg_set_field ( reg , field##_pos , value ) )
 inline void _reg_set_field( uint8_t* const reg , uint8_t field_pos , uint8_t value )
 {
 	*reg |= value << field_pos;
 }
 
+/**
+ * @brief
+ * @param
+ * @param
+ * @param
+ * @retval
+ */
 inline HAL_StatusTypeDef LIS3DHTR_read_reg( const LIS3DHTR_device_t* const device , uint8_t reg_address , uint8_t* const reg_value )
 {
 #ifdef DEBUG_LIS3DHTR
@@ -60,12 +82,30 @@ inline HAL_StatusTypeDef LIS3DHTR_read_reg( const LIS3DHTR_device_t* const devic
 	if( ( device->memory_map[reg_address].access != REG_R ) && ( device->memory_map[reg_address].access != REG_RW ) )
 		return HAL_ERROR;
 
+#if LIS3DHTR_IO_MODE == IO_MODE_BLOCKING
 	return HAL_I2C_Mem_Read( (I2C_HandleTypeDef*) device->i2c_handle , device->i2c_address << 1 , device->memory_map[reg_address].address ,
 	                         LIS3DHTR_REG_SIZE_BYTES , reg_value , sizeof( *reg_value ) , HAL_MAX_DELAY );
 	// if I try to read a region larger than a register, it returns REG_ADRESS | REG_ADRESS | ...
 	// problem with the API, how I use it, the device?
+#else
+	HAL_StatusTypeDef rv = HAL_I2C_Mem_Read_IT( (I2C_HandleTypeDef*) device->i2c_handle , device->i2c_address << 1 ,
+	                                            device->memory_map[reg_address].address , LIS3DHTR_REG_SIZE_BYTES ,
+	                                            reg_value , sizeof( *reg_value ) );
+
+	if( rv == HAL_OK )
+		osThreadFlagsWait( I2C_MEM_IT_FLAG , osFlagsWaitAny , osWaitForever );
+
+	return rv;
+#endif
 }
 
+/**
+ * @brief
+ * @param
+ * @param
+ * @param
+ * @retval
+ */
 inline HAL_StatusTypeDef LIS3DHTR_write_reg( const LIS3DHTR_device_t* const device , uint8_t reg_address , uint8_t reg_value )
 {
 #ifdef DEBUG_LIS3DHTR
@@ -75,10 +115,27 @@ inline HAL_StatusTypeDef LIS3DHTR_write_reg( const LIS3DHTR_device_t* const devi
 	if( ( device->memory_map[reg_address].access != REG_W ) && ( device->memory_map[reg_address].access != REG_RW ) )
 		return HAL_ERROR;
 
+#if LIS3DHTR_IO_MODE == IO_MODE_BLOCKING
 	return HAL_I2C_Mem_Write( (I2C_HandleTypeDef*) device->i2c_handle , device->i2c_address << 1 , device->memory_map[reg_address].address ,
 	                          LIS3DHTR_REG_SIZE_BYTES , &reg_value , sizeof( reg_value ) , HAL_MAX_DELAY );
+#else
+	HAL_StatusTypeDef rv = HAL_I2C_Mem_Write_IT( (I2C_HandleTypeDef*) device->i2c_handle , device->i2c_address << 1 ,
+	                                             device->memory_map[reg_address].address , LIS3DHTR_REG_SIZE_BYTES ,
+	                                             &reg_value , sizeof( reg_value ) );
+
+	if( rv == HAL_OK )
+		osThreadFlagsWait( I2C_MEM_IT_FLAG , osFlagsWaitAny , osWaitForever );
+
+	return rv;
+#endif
 }
 
+/**
+ * @brief
+ * @param
+ * @param
+ * @retval
+ */
 inline LIS3DHTR_device_t LIS3DHTR_create_handle( const I2C_HandleTypeDef* const i2c_handle , const uint8_t i2c_address )
 {
 	return (LIS3DHTR_device_t ) {

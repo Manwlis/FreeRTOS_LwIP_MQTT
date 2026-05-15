@@ -11,6 +11,17 @@
 
 
 //#define DEBUG_LIS3DHTR
+#define IO_MODE_BLOCKING		0
+#define IO_MODE_NON_BLOCKING	1
+#define LIS3DHTR_IO_MODE	IO_MODE_BLOCKING
+#define I2C_MEM_IT_FLAG		0x0002U
+#define I2C_ERR_IT_FLAG		0x0004U
+
+// overload the definitions in settings.h
+#if __has_include("settings.h")
+#include "settings.h"
+#endif
+
 
 enum
 {

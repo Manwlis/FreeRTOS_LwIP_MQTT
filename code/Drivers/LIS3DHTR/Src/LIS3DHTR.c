@@ -4,11 +4,8 @@
  */
 
 /* Includes ------------------------------------------------------------------*/
-#include <stdint.h>
 #include <stdio.h>
 #include "LIS3DHTR.h"
-#include "i2c.h"
-#include "cmsis_os2.h"
 
 /* Variables ---------------------------------------------------------*/
 const LIS3DHTR_reg_t LIS3DHTR_memory_map[LIS3DHTR_NUM_REGS] = {
