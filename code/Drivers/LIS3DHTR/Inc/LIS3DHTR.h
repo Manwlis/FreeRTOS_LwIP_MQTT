@@ -18,6 +18,13 @@
 #include "cmsis_os2.h"
 #endif
 
+
+#if __has_include("lwl.h")
+#include "lwl.h"
+#else
+#define lwl_enter_record(...)
+#endif
+
 /* Macros ------------------------------------------------------------------*/
 #define LIS3DHTR_REG_SIZE_BYTES 1
 #define LIS3DHTR_REG_SIZE_BITS ( LIS3DHTR_REG_SIZE_BYTES * 8 )
@@ -75,9 +82,11 @@ inline void _reg_set_field( uint8_t* const reg , uint8_t field_pos , uint8_t val
  */
 inline HAL_StatusTypeDef LIS3DHTR_read_reg( const LIS3DHTR_device_t* const device , uint8_t reg_address , uint8_t* const reg_value )
 {
-#ifdef DEBUG_LIS3DHTR
-	printf("I2C mem read  @ %s (%x), %-15s (%2x)\n" , device->name , device->i2c_address , device->memory_map[reg_address].name , reg_address );
+#ifdef LIS3DHTR_UART_LOGGING
+	printf("I2C mem read  @ %s (%x), %-15s (%2x)\n" , device->name , device->i2c_address , device->memory_map[reg_address].name , device->memory_map[reg_address].address );
 #endif
+
+	lwl_enter_record( LIS3DHTR_LWL_ID , LIS3DHTR_READ_LWL_ID , "cc" , device->i2c_address , device->memory_map[reg_address].address );
 
 	if( ( device->memory_map[reg_address].access != REG_R ) && ( device->memory_map[reg_address].access != REG_RW ) )
 		return HAL_ERROR;
@@ -108,9 +117,11 @@ inline HAL_StatusTypeDef LIS3DHTR_read_reg( const LIS3DHTR_device_t* const devic
  */
 inline HAL_StatusTypeDef LIS3DHTR_write_reg( const LIS3DHTR_device_t* const device , uint8_t reg_address , uint8_t reg_value )
 {
-#ifdef DEBUG_LIS3DHTR
+#ifdef LIS3DHTR_UART_LOGGING
 	printf("I2C mem write @ %s (%x), %-15s (%2x) , value %x\n" , device->name , device->i2c_address , device->memory_map[reg_address].name , reg_address , reg_value );
 #endif
+
+	lwl_enter_record( LIS3DHTR_LWL_ID , LIS3DHTR_WRITE_LWL_ID , "ccc" , device->i2c_address , device->memory_map[reg_address].address , reg_value );
 
 	if( ( device->memory_map[reg_address].access != REG_W ) && ( device->memory_map[reg_address].access != REG_RW ) )
 		return HAL_ERROR;
