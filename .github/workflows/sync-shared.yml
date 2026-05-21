@@ -1,4 +1,4 @@
-name: Sync shared directory
+name: Sync shared directories and files
 
 permissions:
   contents: write
@@ -6,7 +6,7 @@ permissions:
 concurrency:
   group: sync-shared
   cancel-in-progress: false
-  
+
 on:
   repository_dispatch:
     types: [sync_shared]
@@ -19,24 +19,42 @@ jobs:
 
     steps:
       - name: Checkout FreeRTOS_LwIP_MQTT repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v5
 
       - name: Clone sensor_playground repo
         run: |
           git clone --depth 1 https://github.com/Manwlis/sensor_playground.git
 
-      - name: Copy directory
+      - name: Copy shared content
         run: |
-          mkdir -p code/Drivers/LIS3DHTR
-          rsync -av --delete sensor_playground/code/CM7/Drivers/LIS3DHTR/ code/Drivers/LIS3DHTR/
+          mkdir -p \
+            code/Drivers/LIS3DHTR \
+            code/Middlewares/lwl \
+            scripts
+
+          rsync -av --delete \
+            sensor_playground/code/CM7/Drivers/LIS3DHTR/ \
+            code/Drivers/LIS3DHTR/
+
+          rsync -av --delete \
+            sensor_playground/code/CM7/Core/lwl/ \
+            code/Middlewares/lwl/
+
+          cp sensor_playground/lwl_decoder.py scripts/lwl_decoder.py
 
       - name: Commit changes
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
-          git pull origin main
-          git add code/Drivers/LIS3DHTR
-          git commit -m "Auto-sync shared directory" || exit 0
-          git push origin main
-      
+          git pull --rebase origin main
+
+          git add \
+            code/Drivers/LIS3DHTR \
+            code/Middlewares/lwl \
+            scripts/lwl_decoder.py
+
+          if ! git diff --cached --quiet; then
+            git commit -m "Auto-sync shared directories and files"
+            git push origin main
+          fi
