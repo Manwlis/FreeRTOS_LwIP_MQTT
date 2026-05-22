@@ -34,6 +34,7 @@ typedef struct _lwl_driver_t
 }lwl_driver_t;
 
 /* Variables ---------------------------------------------------------*/
+// In an real world application, this should be stored in external Flash or FRAM to survive black out events.
 static lwl_data_t lwl_data; // TODO: maybe should not directly access lwl_data, but go through lwl_driver
 static lwl_driver_t lwl_driver = { .data = &lwl_data , .is_initialized = false };
 /* Functions ---------------------------------------------------------*/

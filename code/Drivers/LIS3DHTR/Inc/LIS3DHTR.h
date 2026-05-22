@@ -29,6 +29,8 @@
 #define LIS3DHTR_REG_SIZE_BYTES 1
 #define LIS3DHTR_REG_SIZE_BITS ( LIS3DHTR_REG_SIZE_BYTES * 8 )
 
+#define LIS3DHTR_API_CHECK(rv) if( rv != HAL_OK ){ return rv; }
+
 /* Exported variables ---------------------------------------------*/
 extern const LIS3DHTR_reg_t LIS3DHTR_memory_map[LIS3DHTR_NUM_REGS];
 
@@ -36,37 +38,25 @@ extern const LIS3DHTR_reg_t LIS3DHTR_memory_map[LIS3DHTR_NUM_REGS];
 void init_LIS3DHTR_device( const LIS3DHTR_device_t* device , I2C_HandleTypeDef* i2c_handle , uint8_t i2c_address );
 void LIS3DHTR_print_mmap();
 void LIS3DHTR_read_all_regs( const LIS3DHTR_device_t* const device );
-void LIS3DHTR_enable_aux_adcs( const LIS3DHTR_device_t* const device );
-void LIS3DHTR_disable_aux_adcs( const LIS3DHTR_device_t* const device );
-void LIS3DHTR_enable_temp_sensor( const LIS3DHTR_device_t* const device );
-void LIS3DHTR_disable_temp_sensor( const LIS3DHTR_device_t* const device );
-void LIS3DHTR_enable_BDU( const LIS3DHTR_device_t* const device );
-void LIS3DHTR_disable_BDU( const LIS3DHTR_device_t* const device );
-void LIS3DHTR_set_ODR( const LIS3DHTR_device_t* const device , CTRL_REG1_ODR_mode_t ODR_MODE );
-float LIS3DHTR_get_temp( const LIS3DHTR_device_t* const device );
-void LIS3DHTR_get_acceleration( const LIS3DHTR_device_t* const device , float* x , float* y , float* z );
-void LIS3DHTR_set_resolution( const LIS3DHTR_device_t* const device , LIS3DHTR_output_resolution_t resolution );
+HAL_StatusTypeDef LIS3DHTR_enable_aux_adcs( const LIS3DHTR_device_t* const device );
+HAL_StatusTypeDef LIS3DHTR_disable_aux_adcs( const LIS3DHTR_device_t* const device );
+HAL_StatusTypeDef LIS3DHTR_enable_temp_sensor( const LIS3DHTR_device_t* const device );
+HAL_StatusTypeDef LIS3DHTR_disable_temp_sensor( const LIS3DHTR_device_t* const device );
+HAL_StatusTypeDef LIS3DHTR_enable_BDU( const LIS3DHTR_device_t* const device );
+HAL_StatusTypeDef LIS3DHTR_disable_BDU( const LIS3DHTR_device_t* const device );
+HAL_StatusTypeDef LIS3DHTR_set_ODR( const LIS3DHTR_device_t* const device , CTRL_REG1_ODR_mode_t ODR_MODE );
+HAL_StatusTypeDef LIS3DHTR_get_temp( const LIS3DHTR_device_t* const device , float* temp );
+HAL_StatusTypeDef LIS3DHTR_get_acceleration( const LIS3DHTR_device_t* const device , float* x , float* y , float* z );
+HAL_StatusTypeDef LIS3DHTR_set_resolution( const LIS3DHTR_device_t* const device , LIS3DHTR_output_resolution_t resolution );
 
 /* Inline functions ---------------------------------------------*/
-/**
- * @brief
- * @param
- * @param
- * @retval
- */
+// Bit manipulation helper functions
 #define reg_get_field( reg , field ) ( _reg_get_field( reg , field##_mask , field##_pos ) )
 inline uint8_t _reg_get_field( uint8_t reg , uint8_t field_mask , uint8_t field_pos )
 {
 	return ( reg & field_mask ) >> field_pos;
 }
 
-/**
- * @brief
- * @param
- * @param
- * @param
- * @retval
- */
 #define reg_set_field( reg , field , value )( _reg_set_field ( reg , field##_pos , value ) )
 inline void _reg_set_field( uint8_t* const reg , uint8_t field_pos , uint8_t value )
 {
@@ -74,16 +64,16 @@ inline void _reg_set_field( uint8_t* const reg , uint8_t field_pos , uint8_t val
 }
 
 /**
- * @brief
- * @param
- * @param
- * @param
- * @retval
+ * @brief	Read a register of a LIS3DHTR device
+ * @param	device		handler of the LIS3DHTR device
+ * @param	reg_address	Address of the register to be written
+ * @param	reg_value	Value read
+ * @retval	HAL status
  */
 inline HAL_StatusTypeDef LIS3DHTR_read_reg( const LIS3DHTR_device_t* const device , uint8_t reg_address , uint8_t* const reg_value )
 {
-#ifdef LIS3DHTR_UART_LOGGING
-	printf("I2C mem read  @ %s (%x), %-15s (%2x)\n" , device->name , device->i2c_address , device->memory_map[reg_address].name , device->memory_map[reg_address].address );
+#ifdef DEBUG_LIS3DHTR
+	printf("I2C mem read  @ LIS3DHTR (%x), %-15s (%2x)\n" device->i2c_address , device->memory_map[reg_address].name , device->memory_map[reg_address].address );
 #endif
 
 	lwl_enter_record( LIS3DHTR_LWL_ID , LIS3DHTR_READ_LWL_ID , "cc" , device->i2c_address , device->memory_map[reg_address].address );
@@ -109,16 +99,16 @@ inline HAL_StatusTypeDef LIS3DHTR_read_reg( const LIS3DHTR_device_t* const devic
 }
 
 /**
- * @brief
- * @param
- * @param
- * @param
- * @retval
+ * @brief	Write a register of a LIS3DHTR device
+ * @param	device		handler of the LIS3DHTR device
+ * @param	reg_address	Address of the register to be written
+ * @param	reg_value	Value to be written
+ * @retval	HAL status
  */
 inline HAL_StatusTypeDef LIS3DHTR_write_reg( const LIS3DHTR_device_t* const device , uint8_t reg_address , uint8_t reg_value )
 {
-#ifdef LIS3DHTR_UART_LOGGING
-	printf("I2C mem write @ %s (%x), %-15s (%2x) , value %x\n" , device->name , device->i2c_address , device->memory_map[reg_address].name , reg_address , reg_value );
+#ifdef DEBUG_LIS3DHTR
+	printf("I2C mem write @ LIS3DHTR (%x), %-15s (%2x) , value %x\n" , device->i2c_address , device->memory_map[reg_address].name , reg_address , reg_value );
 #endif
 
 	lwl_enter_record( LIS3DHTR_LWL_ID , LIS3DHTR_WRITE_LWL_ID , "ccc" , device->i2c_address , device->memory_map[reg_address].address , reg_value );
@@ -150,9 +140,6 @@ inline HAL_StatusTypeDef LIS3DHTR_write_reg( const LIS3DHTR_device_t* const devi
 inline LIS3DHTR_device_t LIS3DHTR_create_handle( const I2C_HandleTypeDef* const i2c_handle , const uint8_t i2c_address )
 {
 	return (LIS3DHTR_device_t ) {
-#ifdef DEBUG_LIS3DHTR
-			.name = "LIS3DHTR",
-#endif
 			.memory_map = LIS3DHTR_memory_map ,
 			.i2c_handle = i2c_handle ,
 			.i2c_address = i2c_address

@@ -68,9 +68,6 @@ typedef struct
 // Device information
 typedef struct
 {
-#ifdef DEBUG_LIS3DHTR
-	const char* const name;
-#endif
 	const LIS3DHTR_reg_t* const memory_map;
 	const I2C_HandleTypeDef* const i2c_handle;
 	const uint8_t i2c_address;
