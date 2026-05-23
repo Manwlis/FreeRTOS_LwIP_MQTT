@@ -51,12 +51,24 @@ HAL_StatusTypeDef LIS3DHTR_set_resolution( const LIS3DHTR_device_t* const device
 
 /* Inline functions ---------------------------------------------*/
 // Bit manipulation helper functions
+
+/**
+ * @brief	Reads a field of a register
+ * @param	reg		Register to be read
+ * @param	field	Field to be read
+ * @retval	Value of the field
+ */
 #define reg_get_field( reg , field ) ( _reg_get_field( reg , field##_mask , field##_pos ) )
 inline uint8_t _reg_get_field( uint8_t reg , uint8_t field_mask , uint8_t field_pos )
 {
 	return ( reg & field_mask ) >> field_pos;
 }
 
+/**
+ * @brief	Sets a field of a register
+ * @param	reg		Register to be written
+ * @param	field	Field to be written
+ */
 #define reg_set_field( reg , field , value )( _reg_set_field ( reg , field##_pos , value ) )
 inline void _reg_set_field( uint8_t* const reg , uint8_t field_pos , uint8_t value )
 {
@@ -65,30 +77,30 @@ inline void _reg_set_field( uint8_t* const reg , uint8_t field_pos , uint8_t val
 
 /**
  * @brief	Read a register of a LIS3DHTR device
- * @param	device		handler of the LIS3DHTR device
- * @param	reg_address	Address of the register to be written
+ * @param	device		Handler of the LIS3DHTR device
+ * @param	reg_index	Register to be read
  * @param	reg_value	Value read
  * @retval	HAL status
  */
-inline HAL_StatusTypeDef LIS3DHTR_read_reg( const LIS3DHTR_device_t* const device , uint8_t reg_address , uint8_t* const reg_value )
+inline HAL_StatusTypeDef LIS3DHTR_read_reg( const LIS3DHTR_device_t* const device , uint8_t reg_index , uint8_t* const reg_value )
 {
 #ifdef DEBUG_LIS3DHTR
-	printf("I2C mem read  @ LIS3DHTR (%x), %-15s (%2x)\n" device->i2c_address , device->memory_map[reg_address].name , device->memory_map[reg_address].address );
+	printf("I2C mem read  @ LIS3DHTR (%x), %-15s (%2x)\n" device->i2c_address , device->memory_map[reg_index].name , device->memory_map[reg_index].address );
 #endif
 
-	lwl_enter_record( LIS3DHTR_LWL_ID , LIS3DHTR_READ_LWL_ID , "cc" , device->i2c_address , device->memory_map[reg_address].address );
+	lwl_enter_record( LIS3DHTR_LWL_ID , LIS3DHTR_READ_LWL_ID , "cc" , device->i2c_address , device->memory_map[reg_index].address );
 
-	if( ( device->memory_map[reg_address].access != REG_R ) && ( device->memory_map[reg_address].access != REG_RW ) )
+	if( ( device->memory_map[reg_index].access != REG_R ) && ( device->memory_map[reg_index].access != REG_RW ) )
 		return HAL_ERROR;
 
 #if LIS3DHTR_IO_MODE == IO_MODE_BLOCKING
-	return HAL_I2C_Mem_Read( (I2C_HandleTypeDef*) device->i2c_handle , device->i2c_address << 1 , device->memory_map[reg_address].address ,
+	return HAL_I2C_Mem_Read( (I2C_HandleTypeDef*) device->i2c_handle , device->i2c_address << 1 , device->memory_map[reg_index].address ,
 	                         LIS3DHTR_REG_SIZE_BYTES , reg_value , sizeof( *reg_value ) , HAL_MAX_DELAY );
 	// if I try to read a region larger than a register, it returns REG_ADRESS | REG_ADRESS | ...
 	// problem with the API, how I use it, the device?
 #else
 	HAL_StatusTypeDef rv = HAL_I2C_Mem_Read_IT( (I2C_HandleTypeDef*) device->i2c_handle , device->i2c_address << 1 ,
-	                                            device->memory_map[reg_address].address , LIS3DHTR_REG_SIZE_BYTES ,
+	                                            device->memory_map[reg_index].address , LIS3DHTR_REG_SIZE_BYTES ,
 	                                            reg_value , sizeof( *reg_value ) );
 
 	if( rv == HAL_OK )
@@ -100,28 +112,28 @@ inline HAL_StatusTypeDef LIS3DHTR_read_reg( const LIS3DHTR_device_t* const devic
 
 /**
  * @brief	Write a register of a LIS3DHTR device
- * @param	device		handler of the LIS3DHTR device
- * @param	reg_address	Address of the register to be written
+ * @param	device		Handler of the LIS3DHTR device
+ * @param	reg_index	Register to be written
  * @param	reg_value	Value to be written
  * @retval	HAL status
  */
-inline HAL_StatusTypeDef LIS3DHTR_write_reg( const LIS3DHTR_device_t* const device , uint8_t reg_address , uint8_t reg_value )
+inline HAL_StatusTypeDef LIS3DHTR_write_reg( const LIS3DHTR_device_t* const device , uint8_t reg_index , uint8_t reg_value )
 {
 #ifdef DEBUG_LIS3DHTR
-	printf("I2C mem write @ LIS3DHTR (%x), %-15s (%2x) , value %x\n" , device->i2c_address , device->memory_map[reg_address].name , reg_address , reg_value );
+	printf("I2C mem write @ LIS3DHTR (%x), %-15s (%2x) , value %x\n" , device->i2c_address , device->memory_map[reg_index].name , reg_index , reg_value );
 #endif
 
-	lwl_enter_record( LIS3DHTR_LWL_ID , LIS3DHTR_WRITE_LWL_ID , "ccc" , device->i2c_address , device->memory_map[reg_address].address , reg_value );
+	lwl_enter_record( LIS3DHTR_LWL_ID , LIS3DHTR_WRITE_LWL_ID , "ccc" , device->i2c_address , device->memory_map[reg_index].address , reg_value );
 
-	if( ( device->memory_map[reg_address].access != REG_W ) && ( device->memory_map[reg_address].access != REG_RW ) )
+	if( ( device->memory_map[reg_index].access != REG_W ) && ( device->memory_map[reg_index].access != REG_RW ) )
 		return HAL_ERROR;
 
 #if LIS3DHTR_IO_MODE == IO_MODE_BLOCKING
-	return HAL_I2C_Mem_Write( (I2C_HandleTypeDef*) device->i2c_handle , device->i2c_address << 1 , device->memory_map[reg_address].address ,
+	return HAL_I2C_Mem_Write( (I2C_HandleTypeDef*) device->i2c_handle , device->i2c_address << 1 , device->memory_map[reg_index].address ,
 	                          LIS3DHTR_REG_SIZE_BYTES , &reg_value , sizeof( reg_value ) , HAL_MAX_DELAY );
 #else
 	HAL_StatusTypeDef rv = HAL_I2C_Mem_Write_IT( (I2C_HandleTypeDef*) device->i2c_handle , device->i2c_address << 1 ,
-	                                             device->memory_map[reg_address].address , LIS3DHTR_REG_SIZE_BYTES ,
+	                                             device->memory_map[reg_index].address , LIS3DHTR_REG_SIZE_BYTES ,
 	                                             &reg_value , sizeof( reg_value ) );
 
 	if( rv == HAL_OK )
