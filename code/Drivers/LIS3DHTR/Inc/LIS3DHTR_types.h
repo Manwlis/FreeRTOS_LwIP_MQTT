@@ -10,9 +10,9 @@
 
 
 //#define DEBUG_LIS3DHTR
-#define IO_MODE_BLOCKING		0
-#define IO_MODE_NON_BLOCKING	1
-#define LIS3DHTR_IO_MODE	IO_MODE_BLOCKING
+#define NO_OS		0
+#define FREE_RTOS	1
+#define LIS3DHTR_OS	FREE_RTOS
 #define I2C_MEM_IT_FLAG		0x0002U
 #define I2C_ERR_IT_FLAG		0x0004U
 
@@ -69,8 +69,8 @@ typedef struct
 typedef struct
 {
 	const LIS3DHTR_reg_t* const memory_map;
-	const I2C_HandleTypeDef* const i2c_handle;
-	const uint8_t i2c_address;
+	const void* const phy_handle;
+	const uint8_t phy_address;
 } LIS3DHTR_device_t;
 
 

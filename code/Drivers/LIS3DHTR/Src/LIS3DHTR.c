@@ -19,19 +19,88 @@ const LIS3DHTR_reg_t LIS3DHTR_memory_map[LIS3DHTR_NUM_REGS] = {
 };
 
 /* Functions ---------------------------------------------------------*/
-void LIS3DHTR_print_mmap()
+/**
+ * @brief
+ * @param
+ * @param
+ * @retval
+ */
+LIS3DHTR_device_t LIS3DHTR_create_handle( const void* const phy_handle , const uint8_t phy_address )
 {
-	for( int i = 0 ; i < LIS3DHTR_NUM_REGS ; i++ )
-	{
-#ifdef DEBUG_LIS3DHTR
-		printf( "%2d    %20s    %2x    %d\n" , i , LIS3DHTR_memory_map[i].name , LIS3DHTR_memory_map[i].address ,
-		        LIS3DHTR_memory_map[i].access );
-#else
-		printf( "%2d    %2x    %d\n" , i , LIS3DHTR_memory_map[i].address , LIS3DHTR_memory_map[i].access );
-#endif
-	}
+	return (LIS3DHTR_device_t ) {
+			.memory_map = LIS3DHTR_memory_map ,
+			.phy_handle = phy_handle ,
+			.phy_address = phy_address ,
+		};
 }
 
+/**
+ * @brief	Read a register of a LIS3DHTR device
+ * @param	device		Handler of the LIS3DHTR device
+ * @param	reg_index	Register to be read
+ * @param	reg_value	Value read
+ * @retval	HAL status
+ */
+HAL_StatusTypeDef LIS3DHTR_read_reg( const LIS3DHTR_device_t* const device , uint8_t reg_index , uint8_t* const reg_value )
+{
+#ifdef DEBUG_LIS3DHTR
+	printf("Mem read  @ LIS3DHTR (%x), %-15s (%2x)\n" device->phy_address , device->memory_map[reg_index].name , device->memory_map[reg_index].address );
+#endif
+
+	lwl_enter_record( LIS3DHTR_LWL_ID , LIS3DHTR_READ_LWL_ID , "cc" , device->phy_address , device->memory_map[reg_index].address );
+
+	if( ( device->memory_map[reg_index].access != REG_R ) && ( device->memory_map[reg_index].access != REG_RW ) )
+		return HAL_ERROR;
+
+#if LIS3DHTR_OS == NO_OS
+	return HAL_I2C_Mem_Read( (I2C_HandleTypeDef*) device->phy_handle , device->phy_address << 1 , device->memory_map[reg_index].address ,
+	                         LIS3DHTR_REG_SIZE_BYTES , reg_value , sizeof( *reg_value ) , HAL_MAX_DELAY );
+	// if I try to read a region larger than a register, it returns REG_ADRESS | REG_ADRESS | ...
+	// problem with the API, how I use it, the device?
+#else
+	HAL_StatusTypeDef rv = HAL_I2C_Mem_Read_IT( (I2C_HandleTypeDef*) device->phy_handle , device->phy_address << 1 ,
+	                                            device->memory_map[reg_index].address , LIS3DHTR_REG_SIZE_BYTES ,
+	                                            reg_value , sizeof( *reg_value ) );
+
+	if( rv == HAL_OK )
+		osThreadFlagsWait( I2C_MEM_IT_FLAG , osFlagsWaitAny , osWaitForever );
+
+	return rv;
+#endif
+}
+
+/**
+ * @brief	Write a register of a LIS3DHTR device
+ * @param	device		Handler of the LIS3DHTR device
+ * @param	reg_index	Register to be written
+ * @param	reg_value	Value to be written
+ * @retval	HAL status
+ */
+HAL_StatusTypeDef LIS3DHTR_write_reg( const LIS3DHTR_device_t* const device , uint8_t reg_index , uint8_t reg_value )
+{
+#ifdef DEBUG_LIS3DHTR
+	printf("Mem write @ LIS3DHTR (%x), %-15s (%2x) , value %x\n" , device->phy_address , device->memory_map[reg_index].name , reg_index , reg_value );
+#endif
+
+	lwl_enter_record( LIS3DHTR_LWL_ID , LIS3DHTR_WRITE_LWL_ID , "ccc" , device->phy_address , device->memory_map[reg_index].address , reg_value );
+
+	if( ( device->memory_map[reg_index].access != REG_W ) && ( device->memory_map[reg_index].access != REG_RW ) )
+		return HAL_ERROR;
+
+#if LIS3DHTR_OS == NO_OS
+	return HAL_I2C_Mem_Write( (I2C_HandleTypeDef*) device->phy_handle , device->phy_address << 1 , device->memory_map[reg_index].address ,
+	                          LIS3DHTR_REG_SIZE_BYTES , &reg_value , sizeof( reg_value ) , HAL_MAX_DELAY );
+#else
+	HAL_StatusTypeDef rv = HAL_I2C_Mem_Write_IT( (I2C_HandleTypeDef*) device->phy_handle , device->phy_address << 1 ,
+	                                             device->memory_map[reg_index].address , LIS3DHTR_REG_SIZE_BYTES ,
+	                                             &reg_value , sizeof( reg_value ) );
+
+	if( rv == HAL_OK )
+		osThreadFlagsWait( I2C_MEM_IT_FLAG , osFlagsWaitAny , osWaitForever );
+
+	return rv;
+#endif
+}
 
 /**
  * @brief	Prints the current value of all registers of a LIS3DHTR device
@@ -351,3 +420,4 @@ HAL_StatusTypeDef LIS3DHTR_get_acceleration( const LIS3DHTR_device_t* const devi
 
 	return HAL_OK;
 }
+
