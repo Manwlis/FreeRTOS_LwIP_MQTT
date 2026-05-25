@@ -17,7 +17,9 @@
 #define LIS3DHTR_READ_LWL_ID 'R'
 
 #define ADC_LWL_ID 'A'
-#define ADC_READ_LWL_ID 'A'
+#define ADC_REDUCED_DIV_LWL_ID 'R'
+#define ADC_INT_LWL_ID 'I'
+#define ADC_FLOAT_LWL_ID 'F'
 
 #define TEST_LWL_ID 'T'
 #define TEST_TEST_LWL_ID 'T'
