@@ -1,20 +1,20 @@
 /*
  * LIS3DHTR.h
  *
- *  Created on: 3 Μαΐ 2026
- *      Author: MSI
  */
 
 #ifndef INC_LIS3DHTR_H_
 #define INC_LIS3DHTR_H_
 
 /* Includes ------------------------------------------------------------------*/
+#include "stm32h7xx_hal.h"
+
 #include "LIS3DHTR_types.h"
 #ifdef DEBUG_LIS3DHTR
 #include <stdio.h>
 #endif
 
-#if LIS3DHTR_IO_MODE == IO_MODE_NON_BLOCKING
+#if LIS3DHTR_OS == FREE_RTOS
 #include "cmsis_os2.h"
 #endif
 
