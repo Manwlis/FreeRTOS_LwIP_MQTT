@@ -24,6 +24,15 @@
 #define TEST_LWL_ID 'T'
 #define TEST_TEST_LWL_ID 'T'
 
+#define I2C_LWL_ID 'I'
+#define I2C_TX_IT_LWL_ID 'T'
+#define I2C_RX_IT_LWL_ID 'R'
+#define I2C_ER_IT_LWL_ID 'E'
+
+#define SPI_LWL_ID 'S'
+#define SPI_RX_IT_LWL_ID 'R'
+#define SPI_ER_IT_LWL_ID 'E'
+
 /* Exported functions prototypes ---------------------------------------------*/
 void lwl_init();
 void lwl_enter_record( uint8_t module_id , uint8_t functionality_id , const char* fmt , ... );
