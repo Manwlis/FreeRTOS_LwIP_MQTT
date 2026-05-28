@@ -35,6 +35,11 @@
 			<locationURI>PARENT-1-PROJECT_LOC/Common</locationURI>
 		</link>
 		<link>
+			<name>Drivers/LIS3DHTR</name>
+			<type>2</type>
+			<location>C:/Users/MSI/Documents/FreeRTOS_LwIP_MQTT/code/Drivers/LIS3DHTR</location>
+		</link>
+		<link>
 			<name>Core/ThreadSafe/newlib_lock_glue.c</name>
 			<type>1</type>
 			<locationURI>PARENT-1-PROJECT_LOC/ThreadSafe/newlib_lock_glue.c</locationURI>
@@ -43,6 +48,11 @@
 			<name>Core/ThreadSafe/stm32_lock.h</name>
 			<type>1</type>
 			<locationURI>PARENT-1-PROJECT_LOC/ThreadSafe/stm32_lock.h</locationURI>
+		</link>
+		<link>
+			<name>Drivers/STM32H7xx_HAL_Driver/Src</name>
+			<type>2</type>
+			<location>C:/Users/MSI/Documents/FreeRTOS_LwIP_MQTT/code/Drivers/STM32H7xx_HAL_Driver/Src</location>
 		</link>
 		<link>
 			<name>Drivers/STM32H7xx_HAL_Driver/stm32h7xx_hal.c</name>
@@ -173,6 +183,21 @@
 			<name>Drivers/BSP/STM32H7xx_Nucleo/stm32h7xx_nucleo.c</name>
 			<type>1</type>
 			<locationURI>PARENT-1-PROJECT_LOC/Drivers/BSP/STM32H7xx_Nucleo/stm32h7xx_nucleo.c</locationURI>
+		</link>
+		<link>
+			<name>Drivers/BSP/STM32H7xx_Nucleo/stm32h7xx_nucleo.h</name>
+			<type>1</type>
+			<location>C:/Users/MSI/Documents/FreeRTOS_LwIP_MQTT/code/Drivers/BSP/STM32H7xx_Nucleo/stm32h7xx_nucleo.h</location>
+		</link>
+		<link>
+			<name>Drivers/BSP/STM32H7xx_Nucleo/stm32h7xx_nucleo_errno.h</name>
+			<type>1</type>
+			<location>C:/Users/MSI/Documents/FreeRTOS_LwIP_MQTT/code/Drivers/BSP/STM32H7xx_Nucleo/stm32h7xx_nucleo_errno.h</location>
+		</link>
+		<link>
+			<name>Middlewares/Third_Party/FreeRTOS/Source</name>
+			<type>2</type>
+			<location>C:/Users/MSI/Documents/FreeRTOS_LwIP_MQTT/code/Middlewares/Third_Party/FreeRTOS/Source</location>
 		</link>
 		<link>
 			<name>Middlewares/Third_Party/FreeRTOS/cmsis_os2.c</name>

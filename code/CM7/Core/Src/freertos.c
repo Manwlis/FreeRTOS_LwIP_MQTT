@@ -35,6 +35,8 @@
 #elif CURRENT_TEST == TCP_LOOPBACK_MULTITASK
 #include "tcp_loopback_multitask.h"
 #endif
+#include "i2c.h"
+#include "LIS3DHTR.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -158,6 +160,9 @@ void StartDefaultTask(void *argument)
 	UNUSED( argument );
 
 	osDelay( 100 );
+
+	LIS3DHTR_device_t LIS3DHTR_handle = LIS3DHTR_create_handle( (void*) &hi2c4 , 0x19 );
+	hi2c4_wrapper.task_handle = osThreadGetId();
 
 #if CURRENT_TEST == UDP_TX_BENCHMARK
 	udp_tx_benchmark();
