@@ -21,6 +21,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "main.h"
+#include "FreeRTOS.h"
 #include "cmsis_os2.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -35,6 +36,8 @@
 #elif CURRENT_TEST == TCP_LOOPBACK_MULTITASK
 #include "tcp_loopback_multitask.h"
 #endif
+
+#include "mqtt_client.h"
 #include "i2c.h"
 #include "LIS3DHTR.h"
 /* USER CODE END Includes */
@@ -159,26 +162,32 @@ void StartDefaultTask(void *argument)
   /* USER CODE BEGIN StartDefaultTask */
 	UNUSED( argument );
 
-	osDelay( 100 );
+	init_mqtt();
+//	test_mqtt();
 
 	LIS3DHTR_device_t LIS3DHTR_handle = LIS3DHTR_create_handle( (void*) &hi2c4 , 0x19 );
 	hi2c4_wrapper.task_handle = osThreadGetId();
 
-#if CURRENT_TEST == UDP_TX_BENCHMARK
-	udp_tx_benchmark();
-#elif CURRENT_TEST == TCP_LOOPBACK
-	tcp_set_up();
-#if LWIP_IMPLEMENTATION == SOCKET_API
-	tcp_loopback();
-	tcp_destroy();
-#endif
-#elif CURRENT_TEST == TCP_LOOPBACK_MULTITASK
-	tcp_set_up();
-	tcp_rx();
-	// wait until the tx task has finished, so it doesn't try to access any resources after they are destroyed
-	osThreadFlagsWait( 0x0001U , osFlagsWaitAny , osWaitForever );
-	tcp_destroy();
-#endif
+	test_mqtt();
+
+	while(1)
+	{
+		// wait for queue message
+		mqtt_os_message_t* msg = NULL;
+		osStatus_t status = osMessageQueueGet( mqtt_sub_topics[MQTT_TOPIC_SENSOR_ALS].os_queue_id , &msg, NULL, osWaitForever);
+
+		printf("osMessageQueueGet status = %d\n" , status );
+		if( msg == NULL )
+			for(;;);
+
+		printf("%s %lu\n\n" , (char*)(msg->data) , msg->len );
+
+		osMemoryPoolFree( mqtt_os_message_pool , msg );
+
+		// choose correct function
+	}
+
+
 
 	osThreadExit();
   /* USER CODE END StartDefaultTask */

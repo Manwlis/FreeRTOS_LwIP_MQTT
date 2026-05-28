@@ -131,6 +131,15 @@
 #define CHECKSUM_CHECK_ICMP6 0
 /*-----------------------------------------------------------------------------*/
 /* USER CODE BEGIN 1 */
+//#define LWIP_DEBUG		1
+//#define MQTT_DEBUG		LWIP_DBG_ON
+//#define TCP_DEBUG LWIP_DBG_ON
+//#define LWIP_PLATFORM_DIAG(x) do {printf x;fflush(0);} while(0)
+
+#define LWIP_MQTT 16
+#define MEMP_NUM_SYS_TIMEOUT 6 + LWIP_MQTT
+
+//#define MQTT_REQ_MAX_IN_FLIGHT 10
 
 /* USER CODE END 1 */
 
