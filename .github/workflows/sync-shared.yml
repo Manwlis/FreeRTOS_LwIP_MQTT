@@ -33,6 +33,7 @@ jobs:
         run: |
           mkdir -p \
             code/Drivers/LIS3DHTR \
+            code/Drivers/PmodALS \
             code/Middlewares/lwl \
             scripts
 
@@ -41,9 +42,10 @@ jobs:
             code/Drivers/LIS3DHTR/
 
           rsync -av --delete \
-            sensor_playground/code/CM7/Core/lwl/ \
-            code/Middlewares/lwl/
+            sensor_playground/code/CM7/Drivers/PmodALS/ \
+            code/Drivers/PmodALS/
 
+          cp sensor_playground/code/CM7/Core/lwl/lwl.c code/Middlewares/lwl/lwl.c
           cp sensor_playground/lwl_decoder.py scripts/lwl_decoder.py
 
       - name: Commit changes
@@ -53,7 +55,8 @@ jobs:
 
           git add \
             code/Drivers/LIS3DHTR \
-            code/Middlewares/lwl \
+            code/Drivers/PmodALS/ \
+            code/Middlewares/lwl/lwl.c \
             scripts/lwl_decoder.py
 
           if ! git diff --cached --quiet; then
