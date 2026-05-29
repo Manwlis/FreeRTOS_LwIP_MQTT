@@ -130,7 +130,7 @@ static void mqtt_connection_cb( mqtt_client_t* client , void* arg , mqtt_connect
 /**
  * @brief
  */
-void init_mqtt()
+void mqtt_init()
 {
 	// create OS infastructure
 	for( int i = 0 ; i < NUM_MQTT_SUB_TOPICS ; i++ )
@@ -193,7 +193,7 @@ void init_mqtt()
 /**
  * @brief Publish an mqtt message every ~200ms, going through all pub topics, and containing a counter.
  */
-void test_mqtt()
+void mqtt_test()
 {
 	uint32_t counter = 0;
 	mqtt_sub_topic_idx_t i = 0;

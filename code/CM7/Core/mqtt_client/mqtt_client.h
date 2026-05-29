@@ -11,11 +11,11 @@
 
 /* Macros ---------------------------------------------------------*/
 #define MQTT_SUB_TOPICS( X ) \
-	X( SENSOR_LIS3             , "sensor/lis3" ) \
-	X( SENSOR_ALS              , "sensor/als" ) \
-	X( SENSOR_TEMP             , "sensor/temp" ) \
-	X( MODULE_LWL              , "module/lwl" ) \
-	X( LWIP_TESP_UDP           , "lwip/eth_test" )
+	X( SENSOR_LIS3	, "sensor/lis3" ) \
+	X( SENSOR_ALS	, "sensor/als" ) \
+	X( SENSOR_TEMP	, "sensor/temp" ) \
+	X( MODULE_LWL	, "module/lwl" ) \
+	X( LWIP_TEST	, "lwip/eth_test" )
 
 
 #define GEN_ENUM( id , topic )  MQTT_TOPIC_##id ,
@@ -45,8 +45,8 @@ typedef struct _mqtt_os_message_t
 
 
 /* Exported Functions ---------------------------------------------------------*/
-void init_mqtt();
-void test_mqtt();
+void mqtt_init();
+void mqtt_test();
 
 /* Exported Variables ---------------------------------------------------------*/
 extern mqtt_sub_topics_t mqtt_sub_topics[NUM_MQTT_SUB_TOPICS];
