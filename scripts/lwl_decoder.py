@@ -11,7 +11,7 @@ from pathlib import Path
 
 
 ROOT_DIR = "."
-DUMP_BIN = "./code/debug/test3/dump.bin"
+DUMP_BIN = "./code/debug/test5/dump.bin"
 INFO_PATH = Path(DUMP_BIN).parent / "info.txt"
 LWL_DEFINES_FILE = "./code/CM7/Core/lwl/lwl.h"
 
@@ -36,7 +36,7 @@ DEF_REGEX = re.compile(
 CALL_START = re.compile(r'\blwl_enter_record\s*\(')
 
 DEFINE_REGEX = re.compile(
-    r'^\s*#define\s+(\w+)\s+\'(.)\'',
+    r'^\s*#define\s+(\w+)\s+(.+)$',
     re.MULTILINE
 )
 
@@ -60,13 +60,24 @@ def clean_code(text):
 
 def parse_defines(filepath):
 
-    with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
-        content = f.read()
-
     defines = {}
 
-    for name, value in DEFINE_REGEX.findall(content):
-        defines[name] = ord(value)
+    with open(filepath,'r',encoding='utf-8',errors='ignore') as f:
+        content = f.read()
+
+    for name,value in DEFINE_REGEX.findall(content):
+
+        value = value.strip()
+
+        # char literal
+        if value.startswith("'") and value.endswith("'"):
+
+            defines[name] = eval(value)
+
+        # string literal
+        elif value.startswith('"') and value.endswith('"'):
+
+            defines[name] = value[1:-1]
 
     return defines
 
@@ -174,9 +185,13 @@ def extract_calls(text):
     return matches
 
 
-def calculate_size(args):
+def calculate_size(args, id_defines):
 
-    size = 2
+    size = 1      # module char
+
+    function_str = id_defines[args[1]]
+
+    size += len(function_str)
 
     if len(args) < 3:
         return size
@@ -237,7 +252,7 @@ def build_call_database():
 
             entry = {
                 "args": args,
-                "size": calculate_size(args),
+                "size": calculate_size(args , id_defines),
                 "key": resolved_key
             }
 
@@ -354,19 +369,40 @@ def try_decode(decoded_buffer, decoder_table):
 
     while offset < len(decoded_buffer):
 
-        if offset + 2 > len(decoded_buffer):
+        if offset + 1 > len(decoded_buffer):
             return False, decoded_entries, offset
 
-        key = (
-            decoded_buffer[offset],
-            decoded_buffer[offset+1]
-        )
+        module_char = chr(decoded_buffer[offset])
 
-        if key not in decoder_table:
+        matched_entry = None
+        best_len = -1
+
+        for entry in decoder_table.values():
+
+            entry_module, entry_function = entry["key"]
+
+            if entry_module != module_char:
+                continue
+
+            function_bytes = entry_function.encode()
+
+            start = offset + 1
+            end = start + len(function_bytes)
+
+            if end > len(decoded_buffer):
+                continue
+
+            if decoded_buffer[start:end] == function_bytes:
+
+                if len(function_bytes) > best_len:
+
+                    matched_entry = entry
+                    best_len = len(function_bytes)
+
+        if matched_entry is None:
             return False, decoded_entries, offset
 
-        entry = decoder_table[key]
-        size = entry["size"]
+        size = matched_entry["size"]
 
         if offset + size > len(decoded_buffer):
             return False, decoded_entries, offset
@@ -460,32 +496,58 @@ def decode_buffer(decoded_buffer, decoder_table, decode_point):
 
     while offset < len(decoded_buffer):
 
-        if offset + 2 > len(decoded_buffer):
+        if offset + 1 > len(decoded_buffer):
+
             print(
-                f"ERROR: truncated entry header "
-                f"at offset {offset}"
+                f"ERROR: truncated module ID "
+                f"at byte {decode_point + offset}"
             )
             return
 
-        key = (
-            decoded_buffer[offset],
-            decoded_buffer[offset+1]
-        )
+        module_char = chr(decoded_buffer[offset])
 
-        if key not in decoder_table:
+        matched_entry = None
+        best_len = -1
+
+        for entry in decoder_table.values():
+
+            entry_module, entry_function = entry["key"]
+
+            if entry_module != module_char:
+                continue
+
+            function_bytes = entry_function.encode()
+
+            start = offset + 1
+            end = start + len(function_bytes)
+
+            if end > len(decoded_buffer):
+                continue
+
+            if decoded_buffer[start:end] == function_bytes:
+
+                if len(function_bytes) > best_len:
+
+                    matched_entry = entry
+                    best_len = len(function_bytes)
+
+        if matched_entry is None:
 
             print(
                 f"ERROR: unknown entry "
-                f"{chr(key[0])}{chr(key[1])} "
-                f"at byte {decode_point + offset}"
+                f"at byte {decode_point + offset} "
+                f"(module='{module_char}')"
+            )
+
+            print(
+                f"DEBUG offset={offset} "
+                f"bytes={decoded_buffer[offset:offset+15]}"
             )
 
             return
 
-        entry = decoder_table[key]
-
-        args = entry["args"]
-        size = entry["size"]
+        args = matched_entry["args"]
+        size = matched_entry["size"]
 
         if offset + size > len(decoded_buffer):
 
@@ -496,62 +558,91 @@ def decode_buffer(decoded_buffer, decoder_table, decode_point):
 
             return
 
+        module_id, function_id = matched_entry["key"]
+
+        function_bytes = function_id.encode()
+
         fmt = args[2][1:-1]
 
-        pos = offset + 2
+        pos = (
+            offset
+            + 1
+            + len(function_bytes)
+        )
 
-        module_str = f"{args[0]} ({chr(key[0])})"
-        function_str = f"{args[1]} ({chr(key[1])})"
+        module_str = (
+            f"{args[0]} ({module_id})"
+        )
+
+        function_str = (
+            f'{args[1]} ("{function_id}")'
+        )
 
         arg_output = []
 
         for fmt_char, name in zip(fmt, args[3:]):
 
             if fmt_char == 'c':
+
                 value = decoded_buffer[pos]
                 pos += 1
 
             elif fmt_char == 's':
+
                 value = int.from_bytes(
                     decoded_buffer[pos:pos+2],
                     'little',
                     signed=True
                 )
+
                 pos += 2
 
             elif fmt_char == 'h':
+
                 value = int.from_bytes(
                     decoded_buffer[pos:pos+2],
                     'little',
                     signed=False
                 )
+
                 pos += 2
 
             elif fmt_char == 'd':
+
                 value = int.from_bytes(
                     decoded_buffer[pos:pos+4],
                     'little',
                     signed=True
                 )
+
                 pos += 4
 
             elif fmt_char == 'u':
+
                 value = int.from_bytes(
                     decoded_buffer[pos:pos+4],
                     'little',
                     signed=False
                 )
+
                 pos += 4
 
             elif fmt_char == 'f':
+
                 value = struct.unpack(
                     '<f',
                     decoded_buffer[pos:pos+4]
                 )[0]
+
                 pos += 4
 
             else:
-                print(f"ERROR: unknown format '{fmt_char}'")
+
+                print(
+                    f"ERROR: unknown format "
+                    f"'{fmt_char}'"
+                )
+
                 return
 
             arg_output.append(

@@ -45,7 +45,7 @@ void lwl_init()
 	lwl_driver.is_initialized = true;
 }
 
-void lwl_enter_record( uint8_t module_id , uint8_t functionality_id , const char* fmt , ... )
+void lwl_enter_record( uint8_t module_id , char functionality_id[] , const char* fmt , ... )
 {
 	if( lwl_driver.is_initialized == false )
 		return;
@@ -55,8 +55,11 @@ void lwl_enter_record( uint8_t module_id , uint8_t functionality_id , const char
 //	If buffer size is not power of 2 then
 //  lwl_data.next_entry_index = (lwl_data.next_entry_index + 1) % LWL_BUFFER_SIZE;
 
-	lwl_data.buffer[lwl_data.next_entry_index] = functionality_id;
-	lwl_data.next_entry_index = ( lwl_data.next_entry_index + 1 ) & ( LWL_BUFFER_SIZE - 1 );
+	for( int i = 0 ; functionality_id[i] != '\0' ; i++)
+	{
+		lwl_data.buffer[lwl_data.next_entry_index] = (uint8_t)(functionality_id[i]);
+		lwl_data.next_entry_index = ( lwl_data.next_entry_index + 1 ) & ( LWL_BUFFER_SIZE - 1 );
+	}
 
 	va_list args;
 
