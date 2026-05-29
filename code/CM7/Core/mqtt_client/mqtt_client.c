@@ -6,6 +6,8 @@
 #include <string.h>
 #include <stdbool.h>
 #include "cmsis_os2.h"
+#include "FreeRTOS.h"
+#include "queue.h"
 #include "mqtt.h"
 #include "mqtt_priv.h"
 
@@ -136,6 +138,7 @@ void mqtt_init()
 	for( int i = 0 ; i < NUM_MQTT_SUB_TOPICS ; i++ )
 	{
 		mqtt_sub_topics[i].os_queue_id = osMessageQueueNew( MQTT_OS_QUEUE_NUM_ELEMENTS , sizeof(mqtt_os_message_t*) , NULL );
+		vQueueAddToRegistry( mqtt_sub_topics[i].os_queue_id , mqtt_sub_topics[i].name );
 
 		// If something fails, we should clean up everything. Stall for now.
 		if( mqtt_sub_topics[i].os_queue_id == NULL )
