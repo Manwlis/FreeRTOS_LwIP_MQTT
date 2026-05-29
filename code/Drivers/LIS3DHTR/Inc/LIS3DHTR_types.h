@@ -258,8 +258,8 @@ typedef enum
 
 typedef enum
 {
-	LITTLE_ENDIAN ,
-	BIG_ENDIAN
+	BLE_LITTLE_ENDIAN ,
+	BLE_BIG_ENDIAN
 } CTRL_REG4_BLE_setting_t;
 
 typedef enum
