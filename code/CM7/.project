@@ -40,6 +40,11 @@
 			<location>C:/Users/MSI/Documents/FreeRTOS_LwIP_MQTT/code/Drivers/LIS3DHTR</location>
 		</link>
 		<link>
+			<name>Middlewares/lwl</name>
+			<type>2</type>
+			<location>C:/Users/MSI/Documents/FreeRTOS_LwIP_MQTT/code/Middlewares/lwl</location>
+		</link>
+		<link>
 			<name>Core/ThreadSafe/newlib_lock_glue.c</name>
 			<type>1</type>
 			<locationURI>PARENT-1-PROJECT_LOC/ThreadSafe/newlib_lock_glue.c</locationURI>

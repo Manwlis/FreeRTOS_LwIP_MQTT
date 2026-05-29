@@ -33,6 +33,17 @@
 #define SPI_RX_IT_LWL_ID "RX"
 #define SPI_ER_IT_LWL_ID "TX"
 
+#define MQTT_LWL_ID	'M'
+#define MQTT_IN_PUB_CB_LWL_ID			"IP"
+#define MQTT_IN_DATA_CB_LWL_ID			"ID"
+#define MQTT_IN_DATA_CB_PANIC_LWL_ID	"P"
+#define MQTT_IN_DATA_CB_UNKOWN_LWL_ID	"U"
+#define MQTT_IN_DATA_CB_SIZE_LWL_ID		"S"
+#define MQTT_IN_DATA_CB_ALLOC_LWL_ID	"A"
+#define MQTT_IN_DATA_CB_QUEUE_LWL_ID	"Q"
+#define MQTT_CONN_CB_LWL_ID				"C"
+
+
 /* Exported functions prototypes ---------------------------------------------*/
 void lwl_init();
 void lwl_enter_record( uint8_t module_id , char functionality_id[] , const char* fmt , ... );

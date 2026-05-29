@@ -163,8 +163,6 @@ void StartDefaultTask(void *argument)
 	UNUSED( argument );
 
 	init_mqtt();
-//	test_mqtt();
-
 	LIS3DHTR_device_t LIS3DHTR_handle = LIS3DHTR_create_handle( (void*) &hi2c4 , 0x19 );
 	hi2c4_wrapper.task_handle = osThreadGetId();
 

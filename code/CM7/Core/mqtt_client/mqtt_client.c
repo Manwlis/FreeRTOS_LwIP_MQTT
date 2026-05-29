@@ -11,6 +11,7 @@
 
 #include "lwip.h"
 #include "mqtt_client.h"
+#include "lwl.h"
 
 /* Variables ---------------------------------------------------------*/
 mqtt_sub_topics_t mqtt_sub_topics[NUM_MQTT_SUB_TOPICS] = { MQTT_SUB_TOPICS( GEN_ARRAY ) };
@@ -32,16 +33,18 @@ static void mqtt_incoming_publish_cb( void* arg , const char* topic , u32_t tot_
 {
 	UNUSED(arg);
 
-	printf( "Incoming publish at topic %s with total length %u\n" , topic , (unsigned int) tot_len );
+	mqtt_sub_topic_idx = MQTT_UNKOWN_TOPIC;
+
 	for( mqtt_sub_topic_idx_t i = 0 ; i < NUM_MQTT_SUB_TOPICS ; i++ )
 	{
 		if( strcmp( topic , mqtt_sub_topics[i].name ) == 0 )
 		{
 			mqtt_sub_topic_idx = i;
-			return;
+			break;
 		}
 	}
-	mqtt_sub_topic_idx = MQTT_UNKOWN_TOPIC;
+
+	lwl_enter_record( MQTT_LWL_ID , MQTT_IN_PUB_CB_LWL_ID , "du" , mqtt_sub_topic_idx , tot_len );
 }
 
 /**
@@ -55,36 +58,34 @@ static void mqtt_incoming_data_cb( void* arg , const u8_t* data , u16_t len , u8
 {
 	UNUSED(arg);
 
-//	printf( "Incoming publish payload with length %d, flags %u\n" , len , (unsigned int) flags );
+	lwl_enter_record( MQTT_LWL_ID , MQTT_IN_DATA_CB_LWL_ID , "duc" , mqtt_sub_topic_idx , len , flags );
 
 	// handling only completed payloads
 	if( flags & MQTT_DATA_FLAG_LAST )
 	{
 		// verify topic and payload
 		if( mqtt_sub_topic_idx < MQTT_UNKOWN_TOPIC || mqtt_sub_topic_idx >= NUM_MQTT_SUB_TOPICS )
-		{
-//			printf("PANIC! mqtt_sub_topic_idx = %d. This can only happen by memory corruption!\n" , mqtt_sub_topic_idx );
+		{	// PANIC! This can only happen by memory corruption!
+			lwl_enter_record( MQTT_LWL_ID , MQTT_IN_DATA_CB_PANIC_LWL_ID , "" );
 			return;
 		}
 		if( mqtt_sub_topic_idx == MQTT_UNKOWN_TOPIC )
-		{
-			printf("Unknown subscription topic.\n");
+		{	// Unknown subscription topic.
+			lwl_enter_record( MQTT_LWL_ID , MQTT_IN_DATA_CB_UNKOWN_LWL_ID , "" );
 			return;
 		}
 		if( len > MQTT_OS_POOL_ELEMENT_SIZE )
-		{
-			printf( "Can't handle such large messages.\n" );
+		{	// Can't handle such large messages.
+			lwl_enter_record( MQTT_LWL_ID , MQTT_IN_DATA_CB_SIZE_LWL_ID , "" );
 			return;
 		}
-
-//		printf( "Subscription topic: %s\n" , mqtt_sub_topics[mqtt_sub_topic_idx].name );
 
 		// message is valid, send it to the task
 		mqtt_os_message_t *msg = osMemoryPoolAlloc( mqtt_os_message_pool , 0 );
 		if( msg == NULL )
 		{
-			printf( "osMemoryPoolAlloc failed\n" );
-			return; // loosing a message should probably be logged or notify the other side
+			lwl_enter_record( MQTT_LWL_ID , MQTT_IN_DATA_CB_ALLOC_LWL_ID , "" );
+			return; // loosing a message should probably notify the other side?
 		}
 
 		msg->len = len;
@@ -93,11 +94,11 @@ static void mqtt_incoming_data_cb( void* arg , const u8_t* data , u16_t len , u8
 		osStatus_t status = osMessageQueuePut( mqtt_sub_topics[mqtt_sub_topic_idx].os_queue_id , &msg , 0 , 0 );
 		if( status != osOK )
 		{
-			printf( "osMessageQueuePut failed , status = %d\n" , status );
-			return; // loosing a message should probably be logged or notify the other side
+			lwl_enter_record( MQTT_LWL_ID , MQTT_IN_DATA_CB_QUEUE_LWL_ID , "d" , status );
+			return; // loosing a message should probably notify the other side?
 		}
 	}
-	else { /* To handle payloads that are too long, save them in a buffer or a file. */ }
+	else { /* Handle payloads that are too long, save them in a buffer or a file. */ }
 }
 
 
@@ -109,6 +110,8 @@ static void mqtt_incoming_data_cb( void* arg , const u8_t* data , u16_t len , u8
  */
 static void mqtt_connection_cb( mqtt_client_t* client , void* arg , mqtt_connection_status_t status )
 {
+	lwl_enter_record( MQTT_LWL_ID , MQTT_CONN_CB_LWL_ID , "d" , status );
+
 	if( status != MQTT_CONNECT_ACCEPTED )
 	{
 		printf( "mqtt_connection_cb: Disconnected, reason: %d\n" , status );
@@ -196,7 +199,7 @@ void test_mqtt()
 	mqtt_sub_topic_idx_t i = 0;
 	char payload_buffer[18];
 
-	while( counter < 5 )
+	while( counter < 10 )
 	{
 		utoa( counter , payload_buffer , 10 );
 		mqtt_publish( client , mqtt_sub_topics[i].name , payload_buffer , strlen( payload_buffer ) , 2 , 0 , NULL , NULL );
