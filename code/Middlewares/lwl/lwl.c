@@ -142,3 +142,15 @@ void dump_log()
 	HAL_UART_Transmit(&hcom_uart [COM_ActiveLogPort], (uint8_t *) &index , sizeof(index) , COM_POLL_TIMEOUT );
 	HAL_UART_Transmit(&hcom_uart [COM_ActiveLogPort], lwl_data.buffer , LWL_BUFFER_SIZE , COM_POLL_TIMEOUT );
 }
+
+
+
+#if __has_include("mqtt_client.h")
+#include "mqtt_client.h"
+void dump_log_mqtt()
+{
+	mqtt_publish( mqtt_data.client , MQTT_PUB_LWL_INDEX_ID , &(lwl_data.next_entry_index) , sizeof(lwl_data.next_entry_index) , 0 , 0 , NULL , NULL );
+	// TODO: do multiple publishes until all is done.
+	mqtt_publish( mqtt_data.client , MQTT_PUB_LWL_DATA_ID , &(lwl_data.buffer) , 128 , 0 , 0 , NULL , NULL );
+}
+#endif
