@@ -5,24 +5,23 @@
 /* Includes ------------------------------------------------------------------*/
 #include <string.h>
 #include <stdbool.h>
-#include "cmsis_os2.h"
-#include "FreeRTOS.h"
-#include "queue.h"
-#include "mqtt.h"
-#include "mqtt_priv.h"
+#include <assert.h>
 
 #include "lwip.h"
+#include "mqtt.h"
+
+#include "cmsis_os2.h"
+#include "FreeRTOS.h"
+#include "task.h" // taskENTER_CRITICAL()
+
 #include "mqtt_client.h"
 #include "lwl.h"
 
 /* Variables ---------------------------------------------------------*/
-mqtt_sub_topics_t mqtt_sub_topics[NUM_MQTT_SUB_TOPICS] = { MQTT_SUB_TOPICS( GEN_ARRAY ) };
 // memory pool for the os messages
-osMemoryPoolId_t mqtt_os_message_pool;
+mqtt_data_t mqtt_data = {0};
 
-mqtt_client_t* client;
-static volatile bool mqtt_connected = false;
-static volatile mqtt_sub_topic_idx_t mqtt_sub_topic_idx = MQTT_UNKOWN_TOPIC;
+static volatile int32_t mqtt_sub_topic_idx = MQTT_UNKOWN_TOPIC;
 
 /* Functions ---------------------------------------------------------*/
 /**
@@ -37,14 +36,13 @@ static void mqtt_incoming_publish_cb( void* arg , const char* topic , u32_t tot_
 
 	mqtt_sub_topic_idx = MQTT_UNKOWN_TOPIC;
 
-	for( mqtt_sub_topic_idx_t i = 0 ; i < NUM_MQTT_SUB_TOPICS ; i++ )
-	{
-		if( strcmp( topic , mqtt_sub_topics[i].name ) == 0 )
-		{
-			mqtt_sub_topic_idx = i;
-			break;
-		}
-	}
+	for( uint8_t i = 0 ; i < MQTT_MAX_TOPICS ; i++ )
+		if( mqtt_data.sub_topics[i].valid )
+			if( strcmp( topic , mqtt_data.sub_topics[i].name ) == 0 )
+			{
+				mqtt_sub_topic_idx = i;
+				break;
+			}
 
 	lwl_enter_record( MQTT_LWL_ID , MQTT_IN_PUB_CB_LWL_ID , "du" , mqtt_sub_topic_idx , tot_len );
 }
@@ -66,9 +64,10 @@ static void mqtt_incoming_data_cb( void* arg , const u8_t* data , u16_t len , u8
 	if( flags & MQTT_DATA_FLAG_LAST )
 	{
 		// verify topic and payload
-		if( mqtt_sub_topic_idx < MQTT_UNKOWN_TOPIC || mqtt_sub_topic_idx >= NUM_MQTT_SUB_TOPICS )
+		if( mqtt_sub_topic_idx < MQTT_UNKOWN_TOPIC || mqtt_sub_topic_idx >= MQTT_MAX_TOPICS )
 		{	// PANIC! This can only happen by memory corruption!
 			lwl_enter_record( MQTT_LWL_ID , MQTT_IN_DATA_CB_PANIC_LWL_ID , "" );
+			assert( true );
 			return;
 		}
 		if( mqtt_sub_topic_idx == MQTT_UNKOWN_TOPIC )
@@ -76,14 +75,20 @@ static void mqtt_incoming_data_cb( void* arg , const u8_t* data , u16_t len , u8
 			lwl_enter_record( MQTT_LWL_ID , MQTT_IN_DATA_CB_UNKOWN_LWL_ID , "" );
 			return;
 		}
-		if( len > MQTT_OS_POOL_ELEMENT_SIZE )
+		if( len > MQTT_PAYLOAD_MAX_SIZE )
 		{	// Can't handle such large messages.
 			lwl_enter_record( MQTT_LWL_ID , MQTT_IN_DATA_CB_SIZE_LWL_ID , "" );
 			return;
 		}
+		if( mqtt_data.sub_topics[mqtt_sub_topic_idx].valid == false )
+		{	// invalid topic somehow requested. This should have been averted by mqtt_incoming_publish_cb. Maybe panic?
+			lwl_enter_record( MQTT_LWL_ID , MQTT_IN_DATA_CB_INVALID_LWL_ID , "" );
+			assert( true );
+			return;
+		}
 
 		// message is valid, send it to the task
-		mqtt_os_message_t *msg = osMemoryPoolAlloc( mqtt_os_message_pool , 0 );
+		mqtt_os_message_t *msg = osMemoryPoolAlloc( mqtt_data.os_memory_pool , 0 );
 		if( msg == NULL )
 		{
 			lwl_enter_record( MQTT_LWL_ID , MQTT_IN_DATA_CB_ALLOC_LWL_ID , "" );
@@ -93,7 +98,7 @@ static void mqtt_incoming_data_cb( void* arg , const u8_t* data , u16_t len , u8
 		msg->len = len;
 		memcpy( msg->data , data , msg->len );
 
-		osStatus_t status = osMessageQueuePut( mqtt_sub_topics[mqtt_sub_topic_idx].os_queue_id , &msg , 0 , 0 );
+		osStatus_t status = osMessageQueuePut( mqtt_data.sub_topics[mqtt_sub_topic_idx].os_queue_id , &msg , 0 , 0 );
 		if( status != osOK )
 		{
 			lwl_enter_record( MQTT_LWL_ID , MQTT_IN_DATA_CB_QUEUE_LWL_ID , "d" , status );
@@ -111,7 +116,7 @@ static void mqtt_incoming_data_cb( void* arg , const u8_t* data , u16_t len , u8
  * @param
  */
 static void mqtt_connection_cb( mqtt_client_t* client , void* arg , mqtt_connection_status_t status )
-{
+{// TODO: reconnect when disconnected
 	lwl_enter_record( MQTT_LWL_ID , MQTT_CONN_CB_LWL_ID , "d" , status );
 
 	if( status != MQTT_CONNECT_ACCEPTED )
@@ -125,7 +130,8 @@ static void mqtt_connection_cb( mqtt_client_t* client , void* arg , mqtt_connect
 	/* Register the callback function for PUB messages & subscribe */
 	mqtt_set_inpub_callback( client , mqtt_incoming_publish_cb , mqtt_incoming_data_cb , arg );
 
-	mqtt_connected = true;
+	// The user supplied their connected flag through the arg
+	mqtt_data.connected = true;
 }
 
 
@@ -134,31 +140,30 @@ static void mqtt_connection_cb( mqtt_client_t* client , void* arg , mqtt_connect
  */
 void mqtt_init()
 {
-	// create OS infastructure
-	for( int i = 0 ; i < NUM_MQTT_SUB_TOPICS ; i++ )
-	{
-		mqtt_sub_topics[i].os_queue_id = osMessageQueueNew( MQTT_OS_QUEUE_NUM_ELEMENTS , sizeof(mqtt_os_message_t*) , NULL );
-		vQueueAddToRegistry( mqtt_sub_topics[i].os_queue_id , mqtt_sub_topics[i].name );
-
-		// If something fails, we should clean up everything. Stall for now.
-		if( mqtt_sub_topics[i].os_queue_id == NULL )
-			for(;;);
-	}
-	mqtt_os_message_pool = osMemoryPoolNew( MQTT_OS_QUEUE_NUM_ELEMENTS * NUM_MQTT_SUB_TOPICS , sizeof(mqtt_os_message_t) , NULL );
-	if( mqtt_os_message_pool == NULL )
+	// create OS infrastructure
+	mqtt_data.os_memory_pool = osMemoryPoolNew( MQTT_OS_QUEUE_NUM_ELEMENTS * MQTT_MAX_TOPICS , sizeof(mqtt_os_message_t) , NULL );
+	if( mqtt_data.os_memory_pool == NULL )
 		for(;;);
 
+	mqtt_data.num_topics = 0;
+	for( uint32_t i = 0 ; i < MQTT_MAX_TOPICS ; i++ )
+		mqtt_data.sub_topics[i].valid = false;
+
 	// create mqtt connection info
-	client = mqtt_client_new();
+	mqtt_data.client = mqtt_client_new();
 
 	ip_addr_t ip_addr;
 	IP4_ADDR( &ip_addr , ETH_SERVER_IP_1 , ETH_SERVER_IP_2 , ETH_SERVER_IP_3 , ETH_SERVER_IP_4 );
 
-	struct mqtt_connect_client_info_t ci;
-	memset( &ci , 0 , sizeof( ci ) );
-	ci.client_id = "lwip_test";
+	struct mqtt_connect_client_info_t client_info;
+	memset( &client_info , 0 , sizeof( client_info ) );
+	client_info.client_id = MQTT_CLIENT_ID;
 
-	// TODO: move this to a new function in lwip.c and remove it from all the tests.
+	client_info.will_topic = MQTT_WILL_TOPIC;
+	client_info.will_msg = MQTT_WILL_PAYLOAD;
+	client_info.will_msg_len = sizeof( MQTT_WILL_PAYLOAD );
+
+	// TODO: move this to a new function in lwip.c and remove it from here & all the tests.
 	while( !netif_is_up( &gnetif ) || !netif_is_link_up( &gnetif ) )
 		osDelay( 250 );
 
@@ -167,30 +172,59 @@ void mqtt_init()
 	// try connecting until success
 	for( ; ; )
 	{
-		err_t error = mqtt_client_connect( client , &ip_addr , 1883 , &mqtt_connection_cb , NULL , &ci );
+		err_t error = mqtt_client_connect( mqtt_data.client , &ip_addr , MQTT_HOST_PORT , &mqtt_connection_cb , NULL , &client_info );
 		if( error == ERR_OK )
 			break;
 	}
 
 	// wait until connected
-	while( !mqtt_connected )
+	while( !mqtt_data.connected )
 		osDelay( 10 );
 
-	// subscribe to topics
-	mqtt_sub_topic_idx_t i = 0;
-	while( i < NUM_MQTT_SUB_TOPICS )
+	// announce connection
+	mqtt_publish( mqtt_data.client , MQTT_CONNECT_TOPIC , MQTT_CONNECT_PAYLOAD , sizeof( MQTT_CONNECT_PAYLOAD ) , 0 , 0 , NULL , NULL );
+}
+
+
+/**
+ * @brief
+ * @param
+ * @param
+ * @retval
+ */
+err_t mqtt_sub_topic( const char* const topic_name , const osMessageQueueId_t os_queue_id )
+{
+	// this is a shared resource. Protect any changes on it.
+	taskENTER_CRITICAL();
+
+	// check if there are any topic slots available
+	if( mqtt_data.num_topics == MQTT_MAX_TOPICS )
+		return ERR_MEM;
+
+	// find first available topic slot
+	uint8_t i = 0;
+	while( mqtt_data.sub_topics[i].valid == true )
 	{
-		err_t error = mqtt_subscribe( client , mqtt_sub_topics[i].name , 1 , NULL , NULL );
-		printf( "%d    %s\n" , error , mqtt_sub_topics[i].name );
-		// retry failed subscribes
-		if( error == ERR_OK )
-			i++;
+		i++;
+		assert( i < MQTT_MAX_TOPICS ); // i should never reach MQTT_MAX_TOPICS if num_topics was handled correctly
 	}
 
-	// send hello
-	const char* topic = "devices";
-	const char* pub_payload = "STM32H755ZI connected.";
-	mqtt_publish( client , topic , pub_payload , strlen( pub_payload ) , 2 , 0 , NULL , NULL );
+	// subscribe to that topic
+	strcpy( mqtt_data.sub_topics[i].name , topic_name );
+	err_t error = mqtt_subscribe( mqtt_data.client , mqtt_data.sub_topics[i].name , 1 , NULL , NULL );
+	if( error != ERR_OK ) return error;
+
+	// connect OS queue
+	mqtt_data.sub_topics[i].os_queue_id = os_queue_id;
+
+	// update metadata
+	mqtt_data.sub_topics[i].valid = true;
+	mqtt_data.num_topics++;
+
+	taskEXIT_CRITICAL();
+
+	printf("MQTT subscribed to %s, index = %u , queue = %d\n" , mqtt_data.sub_topics[i].name , i , mqtt_data.sub_topics[i].os_queue_id );
+	return ERR_OK;
 }
 
 /**
@@ -199,19 +233,17 @@ void mqtt_init()
 void mqtt_test()
 {
 	uint32_t counter = 0;
-	mqtt_sub_topic_idx_t i = 0;
 	char payload_buffer[18];
 
-	while( counter < 10 )
+	while( counter < MQTT_MAX_TOPICS )
 	{
-		utoa( counter , payload_buffer , 10 );
-		mqtt_publish( client , mqtt_sub_topics[i].name , payload_buffer , strlen( payload_buffer ) , 2 , 0 , NULL , NULL );
+		if( mqtt_data.sub_topics[counter].valid == true )
+		{
+			utoa( counter , payload_buffer , 10 );
+			mqtt_publish( mqtt_data.client , mqtt_data.sub_topics[counter].name , payload_buffer , strlen( payload_buffer ) , 2 , 0 , NULL , NULL );
 
-		osDelay( 500 );
-
+			osDelay( 500 );
+		}
 		counter++;
-		i++;
-		if( i == NUM_MQTT_SUB_TOPICS )
-			i = 0;
 	}
 }

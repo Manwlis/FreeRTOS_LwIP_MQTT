@@ -137,9 +137,10 @@
 //#define LWIP_PLATFORM_DIAG(x) do {printf x;fflush(0);} while(0)
 
 #define LWIP_MQTT 16
-#define MEMP_NUM_SYS_TIMEOUT 6 + LWIP_MQTT
+#define MEMP_NUM_SYS_TIMEOUT 6 + LWIP_MQTT // 6 is the default
 
-//#define MQTT_REQ_MAX_IN_FLIGHT 10
+#define MQTT_REQ_MAX_IN_FLIGHT 8
+//#define MQTT_OUTPUT_RINGBUF_SIZE 512
 
 /* USER CODE END 1 */
 

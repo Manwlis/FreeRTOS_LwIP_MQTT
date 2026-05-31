@@ -1,11 +1,15 @@
-// Test settings
+// Eth Test settings ----------------------------------------------------------
 #define UDP_TX_BENCHMARK		0
 #define TCP_LOOPBACK			1
 #define TCP_LOOPBACK_MULTITASK	2
 
 #define CURRENT_TEST	TCP_LOOPBACK
 
-// network settings
+#if CURRENT_TEST == TCP_LOOPBACK_MULTITASK
+#define NUM_NETWORK_MESSAGES 16
+#endif
+
+// network settings -----------------------------------------------------------
 #define MESSAGE_SIZE	1460
 #define ETH_SERVER_PORT	55151
 
@@ -15,18 +19,36 @@
 #define ETH_SERVER_IP_4	1
 #define ETH_SERVER_IP	"192.168.0.1"
 
-// LIS3DHTR
+// LIS3DHTR -------------------------------------------------------------------
 #define NO_OS		0
 #define FREE_RTOS	1
 #define LIS3DHTR_OS	FREE_RTOS
 #define I2C_MEM_IT_FLAG		0x0002U
 #define I2C_ERR_IT_FLAG		0x0004U
 
-// MQTT
-#define MQTT_OS_QUEUE_NUM_ELEMENTS 8
-#define MQTT_OS_POOL_ELEMENT_SIZE 8
+// MQTT -----------------------------------------------------------------------
+#define MQTT_HOST_PORT 1883
+
+// Client internals
+#define MQTT_MAX_TOPICS				8
+#define MQTT_TOPIC_NAME_MAX_SIZE	16
+#define MQTT_PAYLOAD_MAX_SIZE		16
+#define MQTT_OS_QUEUE_NUM_ELEMENTS	8
+
+// Sub topics
+#define MQTT_SUB_LWL_ID			"mod/lwl"
+#define MQTT_SUB_LIS3_ID		"sensor/lis3"
+#define MQTT_SUB_ALS_ID			"sensor/als"
+#define MQTT_SUB_TEMP_ID		"sensor/temp"
+#define MQTT_SUB_ETH_TEST_ID	"lwip/eth_test"
+
+// Pub Topics
+#define MQTT_PUB_LWL_INDEX_ID	MQTT_SUB_LWL_ID "/index"
+#define MQTT_PUB_LWL_DATA_ID	MQTT_SUB_LWL_ID "/data"
 
 // other
-#if CURRENT_TEST == TCP_LOOPBACK_MULTITASK
-#define NUM_NETWORK_MESSAGES 16
-#endif
+#define MQTT_CLIENT_ID			"STM32H755"
+#define MQTT_CONNECT_TOPIC		"dev/STM32H755"
+#define MQTT_CONNECT_PAYLOAD	"connected"
+#define MQTT_WILL_TOPIC			MQTT_CONNECT_TOPIC
+#define MQTT_WILL_PAYLOAD		"disconnected"
