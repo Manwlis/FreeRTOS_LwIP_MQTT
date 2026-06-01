@@ -19,6 +19,9 @@
 #define ETH_SERVER_IP_4	1
 #define ETH_SERVER_IP	"192.168.0.1"
 
+// ADC DMA -------------------------------------------------------------------
+#define ADC_DMA_FLAG	0x0001U
+
 // LIS3DHTR -------------------------------------------------------------------
 #define NO_OS		0
 #define FREE_RTOS	1

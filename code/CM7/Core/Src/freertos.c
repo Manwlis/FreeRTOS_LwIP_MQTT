@@ -44,6 +44,7 @@
 #include "LIS3DHTR.h"
 #include "spi.h"
 #include "pmodals.h"
+#include "adc.h"
 
 // for vQueueAddToRegistry()
 #include "FreeRTOS.h"
@@ -317,7 +318,7 @@ void adc3_task( void* argument )
 	UNUSED( argument );
 
 	// Init peripheral and devices
-//	start_ADC_DMA();
+	start_ADC_DMA();
 
 	// connect to mqtt
 	while(mqtt_data.connected != true )
@@ -338,7 +339,24 @@ void adc3_task( void* argument )
 
 		printf("adc3_task received command: %s\n" , (char*)(msg->data) );
 
-
+		if( ( msg->len == sizeof("int") - 1 ) && ( strncmp( (char*)msg->data , "int" , msg->len ) == 0 ) )
+		{
+			int64_t temp = 0;
+			calc_ADC_temp_int( &temp );
+			printf( "On-chip temp sensor = %ld.%03lu C\n" , (int32_t) ( temp / 1000 ) , (uint32_t) ( temp % 1000 ) );
+		}
+		else if( ( msg->len == sizeof("reduced") - 1 ) && ( strncmp( (char*)msg->data , "reduced" , msg->len ) == 0 ) )
+		{
+			int64_t temp = 0;
+			calc_ADC_temp_reduced_div( &temp );
+			printf( "On-chip temp sensor = %ld.%03lu C\n" , (int32_t) ( temp / 1000 ) , (uint32_t) ( temp % 1000 ) );
+		}
+		else if( ( msg->len == sizeof("float") - 1 ) && ( strncmp( (char*)msg->data , "float" , msg->len ) == 0 ) )
+		{
+			float temp = 0;
+			calc_ADC_temp_float( &temp );
+			printf( "On-chip temp sensor = %f C\n" , temp );
+		}
 
 		osMemoryPoolFree( mqtt_data.os_memory_pool , msg );
 	}
