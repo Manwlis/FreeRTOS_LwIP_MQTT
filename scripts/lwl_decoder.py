@@ -10,10 +10,10 @@ import struct
 from pathlib import Path
 
 
-ROOT_DIR = "../code/"
-DUMP_BIN = "../code/debug/lwl/dump.bin"
+ROOT_DIR = "."
+DUMP_BIN = "./code/debug/test5/dump.bin"
 INFO_PATH = Path(DUMP_BIN).parent / "info.txt"
-LWL_DEFINES_FILE = "../code/Middlewares/lwl/lwl.h"
+LWL_DEFINES_FILE = "./code/CM7/Core/lwl/lwl.h"
 
 
 # ============================================================
