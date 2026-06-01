@@ -8,8 +8,9 @@
 /* Includes ------------------------------------------------------------------*/
 #include <stdint.h>
 #include <stdbool.h>
-#include "settings.h"
+#include <string.h>
 #include <err.h>
+#include "settings.h"
 #include "cmsis_os2.h"
 #include "mqtt.h"
 
@@ -50,6 +51,15 @@ typedef struct _mqtt_os_message_t
 void mqtt_init();
 void mqtt_test();
 err_t mqtt_sub_topic( const char* const topic_name , const osMessageQueueId_t os_queue_id );
+
+/* Inline Functions ---------------------------------------------------------*/
+inline bool compare_mqtt_payload( const mqtt_os_message_t* const message , const char* const string )
+{
+	if( message == NULL || string == NULL )
+		return false;
+
+	return ( message->len == strlen(string) ) && ( strncmp( (char*)message->data , string , message->len ) == 0 );
+}
 
 /* Exported Variables ---------------------------------------------------------*/
 extern mqtt_data_t mqtt_data;

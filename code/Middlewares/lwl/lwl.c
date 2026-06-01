@@ -144,7 +144,6 @@ void dump_log()
 }
 
 
-
 #if __has_include("mqtt_client.h")
 #include "mqtt_client.h"
 void dump_log_mqtt()
@@ -157,7 +156,6 @@ void dump_log_mqtt()
 	memcpy( &(metadata[sizeof(lwl_data.next_entry_index)]) , &(uint32_t){LWL_BUFFER_SIZE} , sizeof(uint32_t) );
 
 	mqtt_publish( mqtt_data.client , MQTT_PUB_LWL_INDEX_ID , metadata , sizeof(metadata) , 0 , 0 , NULL , NULL );
-	// TODO: do multiple publishes until all is done.
 
 	int32_t current_sent_size = 0;
 	for( int32_t remaining_data = LWL_BUFFER_SIZE ; remaining_data > 0 ; remaining_data -= current_sent_size )

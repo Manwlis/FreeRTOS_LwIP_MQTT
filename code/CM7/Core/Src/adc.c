@@ -223,7 +223,7 @@ void start_ADC_DMA()
 	HAL_TIM_Base_Start( &htim2 );
 }
 
-HAL_StatusTypeDef calc_ADC_temp_reduced_div( int64_t* const result )
+HAL_StatusTypeDef calc_ADC_temp_reduced_div( int32_t* const result )
 {
 	lwl_enter_record( ADC_LWL_ID , ADC_REDUCED_DIV_LWL_ID , "" );
 
@@ -251,11 +251,11 @@ HAL_StatusTypeDef calc_ADC_temp_reduced_div( int64_t* const result )
 	else
 		filtered = ( filtered * 7 + temp_milli ) / 8;
 
-	*result = filtered;
+	*result = (int32_t)filtered;
 	return HAL_OK;
 }
 
-HAL_StatusTypeDef calc_ADC_temp_int( int64_t* const result )
+HAL_StatusTypeDef calc_ADC_temp_int( int32_t* const result )
 {
 	lwl_enter_record( ADC_LWL_ID , ADC_INT_LWL_ID , "" );
 
@@ -278,7 +278,7 @@ HAL_StatusTypeDef calc_ADC_temp_int( int64_t* const result )
 	else
 		filtered = ( filtered * 7 + temp_milli ) / 8;
 
-	*result = filtered;
+	*result = (int32_t)filtered;
 	return HAL_OK;
 }
 

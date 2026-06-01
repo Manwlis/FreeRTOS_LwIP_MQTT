@@ -48,6 +48,10 @@
 // Pub Topics
 #define MQTT_PUB_LWL_INDEX_ID	MQTT_SUB_LWL_ID "/meta"
 #define MQTT_PUB_LWL_DATA_ID	MQTT_SUB_LWL_ID "/data"
+#define MQTT_PUB_ALS_LUX_ID		MQTT_SUB_ALS_ID "/lux"
+#define MQTT_PUB_TEMP_INT_ID	MQTT_SUB_TEMP_ID "/int"
+#define MQTT_PUB_TEMP_FLOAT_ID	MQTT_SUB_TEMP_ID "/float"
+#define MQTT_PUB_LIS3_ACCEL_ID	MQTT_SUB_LIS3_ID "/accel"
 
 // other
 #define MQTT_CLIENT_ID			"STM32H755"
