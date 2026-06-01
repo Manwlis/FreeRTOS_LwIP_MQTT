@@ -46,7 +46,7 @@
 #define MQTT_SUB_ETH_TEST_ID	"lwip/eth_test"
 
 // Pub Topics
-#define MQTT_PUB_LWL_INDEX_ID	MQTT_SUB_LWL_ID "/index"
+#define MQTT_PUB_LWL_INDEX_ID	MQTT_SUB_LWL_ID "/meta"
 #define MQTT_PUB_LWL_DATA_ID	MQTT_SUB_LWL_ID "/data"
 
 // other

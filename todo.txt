@@ -1,2 +1,3 @@
 handle mqtt disconnections
-dump lwl data through mqtt
+protect lwl buffer writing
+fill the tasks
