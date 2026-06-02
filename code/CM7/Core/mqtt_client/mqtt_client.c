@@ -19,7 +19,7 @@
 
 /* Variables ---------------------------------------------------------*/
 // memory pool for the os messages
-mqtt_data_t mqtt_data = {0};
+mqtt_data_t mqtt_data = { 0 };
 
 static volatile int32_t mqtt_sub_topic_idx = MQTT_UNKOWN_TOPIC;
 
@@ -32,7 +32,7 @@ static volatile int32_t mqtt_sub_topic_idx = MQTT_UNKOWN_TOPIC;
  */
 static void mqtt_incoming_publish_cb( void* arg , const char* topic , u32_t tot_len )
 {
-	UNUSED(arg);
+	UNUSED( arg );
 
 	mqtt_sub_topic_idx = MQTT_UNKOWN_TOPIC;
 
@@ -56,7 +56,7 @@ static void mqtt_incoming_publish_cb( void* arg , const char* topic , u32_t tot_
  */
 static void mqtt_incoming_data_cb( void* arg , const u8_t* data , u16_t len , u8_t flags )
 {
-	UNUSED(arg);
+	UNUSED( arg );
 
 	lwl_enter_record( MQTT_LWL_ID , MQTT_IN_DATA_CB_LWL_ID , "duc" , mqtt_sub_topic_idx , len , flags );
 
@@ -88,7 +88,7 @@ static void mqtt_incoming_data_cb( void* arg , const u8_t* data , u16_t len , u8
 		}
 
 		// message is valid, send it to the task
-		mqtt_os_message_t *msg = osMemoryPoolAlloc( mqtt_data.os_memory_pool , 0 );
+		mqtt_os_message_t* msg = osMemoryPoolAlloc( mqtt_data.os_memory_pool , 0 );
 		if( msg == NULL )
 		{
 			lwl_enter_record( MQTT_LWL_ID , MQTT_IN_DATA_CB_ALLOC_LWL_ID , "" );
@@ -108,7 +108,6 @@ static void mqtt_incoming_data_cb( void* arg , const u8_t* data , u16_t len , u8
 	else { /* Handle payloads that are too long, save them in a buffer or a file. */ }
 }
 
-
 /**
  * @brief
  * @param
@@ -116,7 +115,7 @@ static void mqtt_incoming_data_cb( void* arg , const u8_t* data , u16_t len , u8
  * @param
  */
 static void mqtt_connection_cb( mqtt_client_t* client , void* arg , mqtt_connection_status_t status )
-{// TODO: reconnect when disconnected
+{ // TODO: reconnect when disconnected
 	lwl_enter_record( MQTT_LWL_ID , MQTT_CONN_CB_LWL_ID , "d" , status );
 
 	if( status != MQTT_CONNECT_ACCEPTED )
@@ -134,7 +133,6 @@ static void mqtt_connection_cb( mqtt_client_t* client , void* arg , mqtt_connect
 	mqtt_data.connected = true;
 }
 
-
 /**
  * @brief
  */
@@ -143,7 +141,7 @@ void mqtt_init()
 	// create OS infrastructure
 	mqtt_data.os_memory_pool = osMemoryPoolNew( MQTT_OS_QUEUE_NUM_ELEMENTS * MQTT_MAX_TOPICS , sizeof(mqtt_os_message_t) , NULL );
 	if( mqtt_data.os_memory_pool == NULL )
-		for(;;);
+		for( ; ; );
 
 	mqtt_data.num_topics = 0;
 	for( uint32_t i = 0 ; i < MQTT_MAX_TOPICS ; i++ )
@@ -182,9 +180,8 @@ void mqtt_init()
 		osDelay( 10 );
 
 	// announce connection
-	mqtt_publish( mqtt_data.client , MQTT_CONNECT_TOPIC , MQTT_CONNECT_PAYLOAD , sizeof( MQTT_CONNECT_PAYLOAD ) , 0 , 0 , NULL , NULL );
+	mqtt_publish_wrapper( mqtt_data.client , MQTT_CONNECT_TOPIC , MQTT_CONNECT_PAYLOAD , sizeof( MQTT_CONNECT_PAYLOAD ) , 0 , 0 , NULL , NULL );
 }
-
 
 /**
  * @brief
@@ -195,7 +192,7 @@ void mqtt_init()
 err_t mqtt_sub_topic( const char* const topic_name , const osMessageQueueId_t os_queue_id )
 {
 	// this is a shared resource. Protect any changes on it.
-	taskENTER_CRITICAL();
+	taskENTER_CRITICAL( );
 
 	// check if there are any topic slots available
 	if( mqtt_data.num_topics == MQTT_MAX_TOPICS )
@@ -221,9 +218,9 @@ err_t mqtt_sub_topic( const char* const topic_name , const osMessageQueueId_t os
 	mqtt_data.sub_topics[i].valid = true;
 	mqtt_data.num_topics++;
 
-	taskEXIT_CRITICAL();
+	taskEXIT_CRITICAL( );
 
-	printf("MQTT subscribed to %s, index = %u , queue = %d\n" , mqtt_data.sub_topics[i].name , i , mqtt_data.sub_topics[i].os_queue_id );
+	printf( "MQTT subscribed to %s, index = %u , queue = %d\n" , mqtt_data.sub_topics[i].name , i , mqtt_data.sub_topics[i].os_queue_id );
 	return ERR_OK;
 }
 

@@ -139,9 +139,11 @@
 #define LWIP_MQTT 16
 #define MEMP_NUM_SYS_TIMEOUT 6 + LWIP_MQTT // 6 is the default
 
-#define MQTT_REQ_MAX_IN_FLIGHT 8
+#define MQTT_REQ_MAX_IN_FLIGHT 16
 //#define MQTT_OUTPUT_RINGBUF_SIZE 512
 
+#define LWIP_TCPIP_CORE_LOCKING 1
+#define LWIP_CHECK_MULTITHREADING 1
 /* USER CODE END 1 */
 
 #ifdef __cplusplus

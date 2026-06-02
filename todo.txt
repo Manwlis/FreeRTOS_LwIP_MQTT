@@ -1,3 +1,4 @@
 handle mqtt disconnections
 protect lwl buffer writing
 fill the tasks
+disable naggle

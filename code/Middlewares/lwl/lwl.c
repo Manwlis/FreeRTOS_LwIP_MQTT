@@ -134,18 +134,10 @@ void lwl_enter_record( uint8_t module_id , char functionality_id[] , const char*
 	}
 }
 
-// this doesnt work, because uart is set with 7 data bits. Use debugger for now instead
-void dump_log()
-{
-	static COM_TypeDef COM_ActiveLogPort = COM1;
-	uint32_t index = (uint32_t)(lwl_data.next_entry_index);
-	HAL_UART_Transmit(&hcom_uart [COM_ActiveLogPort], (uint8_t *) &index , sizeof(index) , COM_POLL_TIMEOUT );
-	HAL_UART_Transmit(&hcom_uart [COM_ActiveLogPort], lwl_data.buffer , LWL_BUFFER_SIZE , COM_POLL_TIMEOUT );
-}
-
 
 #if __has_include("mqtt_client.h")
 #include "mqtt_client.h"
+#include "tcpip.h"
 void dump_log_mqtt()
 {
 	// make sure it does not change while dumping. We may loose a few entries while dumping but it is better than corrupting the data.
@@ -160,13 +152,11 @@ void dump_log_mqtt()
 	int32_t current_sent_size = 0;
 	for( int32_t remaining_data = LWL_BUFFER_SIZE ; remaining_data > 0 ; remaining_data -= current_sent_size )
 	{
-		const int32_t payload_max_size = MQTT_OUTPUT_RINGBUF_SIZE - sizeof(MQTT_PUB_LWL_DATA_ID) - 5; // dont know why -5. According to mqtt, largest outgoing publish message = topic+payloads
+		const int32_t payload_max_size = MQTT_OUTPUT_RINGBUF_SIZE - sizeof(MQTT_PUB_LWL_DATA_ID) - 8; // dont know why -5. According to mqtt, largest outgoing publish message = topic+payloads
 		current_sent_size = ( remaining_data > payload_max_size ) ? payload_max_size : remaining_data ;
 
-		err_t rv;
-		do{
-			rv = mqtt_publish( mqtt_data.client , MQTT_PUB_LWL_DATA_ID , &(lwl_data.buffer[LWL_BUFFER_SIZE - remaining_data]) , current_sent_size , 0 , 0 , NULL , NULL );
-		} while( rv == ERR_MEM );
+		mqtt_publish_wrapper( mqtt_data.client , MQTT_PUB_LWL_DATA_ID , &(lwl_data.buffer[LWL_BUFFER_SIZE - remaining_data]) , current_sent_size , 1 , 0 , NULL , NULL );
+
 	}
 	lwl_driver.is_initialized = true;
 }

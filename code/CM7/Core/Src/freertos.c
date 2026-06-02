@@ -312,7 +312,7 @@ void i2c4_task( void* argument )
 			memcpy( &(metadata[sizeof(x)]) , &(y) , sizeof(y) );
 			memcpy( &(metadata[sizeof(x)+sizeof(y)]) , &(z) , sizeof(z) );
 
-			mqtt_publish( mqtt_data.client , MQTT_PUB_LIS3_ACCEL_ID , metadata , sizeof( metadata ) , 0 , 0 , NULL , NULL );
+			mqtt_publish_wrapper( mqtt_data.client , MQTT_PUB_LIS3_ACCEL_ID , metadata , sizeof( metadata ) , 0 , 0 , NULL , NULL );
 		}
 
 
@@ -356,7 +356,7 @@ void spi1_task( void* argument )
 		{
 			float lux = 0;
 			pmodals_get_lux( &pmodals_handle , &lux );
-			mqtt_publish( mqtt_data.client , MQTT_PUB_ALS_LUX_ID , &lux , sizeof( lux ) , 0 , 0 , NULL , NULL );
+			mqtt_publish_wrapper( mqtt_data.client , MQTT_PUB_ALS_LUX_ID , &lux , sizeof( lux ) , 0 , 0 , NULL , NULL );
 		}
 
 		// free message
@@ -395,21 +395,21 @@ void adc3_task( void* argument )
 			int32_t temp = 0;
 			calc_ADC_temp_int( &temp );
 
-			mqtt_publish( mqtt_data.client , MQTT_PUB_TEMP_INT_ID , &temp , sizeof( temp ) , 0 , 0 , NULL , NULL );
+			mqtt_publish_wrapper( mqtt_data.client , MQTT_PUB_TEMP_INT_ID , &temp , sizeof( temp ) , 0 , 0 , NULL , NULL );
 		}
 		else if( compare_mqtt_payload( message , "reduced" ) )
 		{
 			int32_t temp = 0;
 			calc_ADC_temp_reduced_div( &temp );
 
-			mqtt_publish( mqtt_data.client , MQTT_PUB_TEMP_INT_ID , &temp , sizeof( temp ) , 0 , 0 , NULL , NULL );
+			mqtt_publish_wrapper( mqtt_data.client , MQTT_PUB_TEMP_INT_ID , &temp , sizeof( temp ) , 0 , 0 , NULL , NULL );
 		}
 		else if( compare_mqtt_payload( message , "float" ) )
 		{
 			float temp = 0;
 			calc_ADC_temp_float( &temp );
 
-			mqtt_publish( mqtt_data.client , MQTT_PUB_TEMP_FLOAT_ID , &temp , sizeof( temp ) , 0 , 0 , NULL , NULL );
+			mqtt_publish_wrapper( mqtt_data.client , MQTT_PUB_TEMP_FLOAT_ID , &temp , sizeof( temp ) , 0 , 0 , NULL , NULL );
 		}
 
 		// free message

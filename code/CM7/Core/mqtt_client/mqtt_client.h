@@ -13,6 +13,7 @@
 #include "settings.h"
 #include "cmsis_os2.h"
 #include "mqtt.h"
+#include "tcpip.h" // LOCK_TCPIP_CORE() & UNLOCK_TCPIP_CORE()
 
 /* Defines ---------------------------------------------------------*/
 #define MQTT_UNKOWN_TOPIC -1
@@ -59,6 +60,18 @@ inline bool compare_mqtt_payload( const mqtt_os_message_t* const message , const
 		return false;
 
 	return ( message->len == strlen(string) ) && ( strncmp( (char*)message->data , string , message->len ) == 0 );
+}
+
+
+inline err_t mqtt_publish_wrapper( mqtt_client_t *client , const char *topic , const void *payload , u16_t payload_length , u8_t qos , u8_t retain ,
+                                  mqtt_request_cb_t cb , void *arg )
+{
+	LOCK_TCPIP_CORE();
+	err_t rv = mqtt_publish( client , topic , payload , payload_length , qos , retain , cb , arg );
+	UNLOCK_TCPIP_CORE();
+
+	printf( "pub rv = %d\n" , rv );
+	return rv;
 }
 
 /* Exported Variables ---------------------------------------------------------*/
