@@ -10,11 +10,24 @@ import struct
 from pathlib import Path
 
 
-ROOT_DIR = "../code/"
-DUMP_BIN = "../code/debug/lwl/dump.bin"
-INFO_PATH = Path(DUMP_BIN).parent / "info.txt"
-LWL_DEFINES_FILE = "../code/Middlewares/lwl/lwl.h"
 
+def load_paths(config_file="lwl_decoder_paths.txt"):
+
+    namespace = {
+        "Path": Path
+    }
+
+    with open(config_file, 'r', encoding='utf-8') as f:
+        config_text = f.read()
+
+    exec(config_text, namespace)
+
+    return {
+        "ROOT_DIR": namespace["ROOT_DIR"],
+        "DUMP_BIN": namespace["DUMP_BIN"],
+        "INFO_PATH": namespace["INFO_PATH"],
+        "LWL_DEFINES_FILE": namespace["LWL_DEFINES_FILE"],
+    }
 
 # ============================================================
 # Regex
@@ -212,15 +225,14 @@ def calculate_size(args, id_defines):
 # ============================================================
 # Database generation
 # ============================================================
+def build_call_database(root_dir, lwl_defines_file):
 
-def build_call_database():
-
-    id_defines = parse_defines(LWL_DEFINES_FILE)
+    id_defines = parse_defines( lwl_defines_file )
 
     all_calls = []
     seen_keys = {}
 
-    for path in Path(ROOT_DIR).rglob("*"):
+    for path in Path(root_dir).rglob("*"):
 
         if path.suffix not in (".c", ".h"):
             continue
@@ -281,17 +293,13 @@ def build_decoder_table(all_calls):
 # ============================================================
 # Buffer handling
 # ============================================================
-
-def load_and_unwrap_buffer(bin_path):
-
-    
-
+def load_and_unwrap_buffer(bin_path, info_path):
     # ---- load binary ----
     with open(bin_path, "rb") as f:
         data = f.read()
 
     # ---- load next_entry_index ----
-    with open(INFO_PATH, 'r', encoding='utf-8') as f:
+    with open(info_path, 'r', encoding='utf-8') as f:
         info_text = f.read()
 
     m = re.search(
@@ -670,13 +678,19 @@ def decode_buffer(decoded_buffer, decoder_table, decode_point):
 
 def main():
 
-    all_calls = build_call_database()
+    config = load_paths()
+
+    all_calls = build_call_database(
+        config["ROOT_DIR"],
+        config["LWL_DEFINES_FILE"]
+    )
 
     for entry in all_calls:
         print( entry )
 
     unwrapped = load_and_unwrap_buffer(
-        DUMP_BIN
+        config["DUMP_BIN"],
+        config["INFO_PATH"]
     )
 
     decoder_table = build_decoder_table(

@@ -1,0 +1,4 @@
+ROOT_DIR = "../code/"
+DUMP_BIN = "../code/debug/lwl/dump.bin"
+INFO_PATH = "../code/debug/lwl/info.txt"
+LWL_DEFINES_FILE = "../code/Middlewares/lwl/lwl.h"
