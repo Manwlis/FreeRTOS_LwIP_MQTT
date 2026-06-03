@@ -21,6 +21,8 @@
 /* Macros ---------------------------------------------------------*/
 
 /* Shared Types ---------------------------------------------------------*/
+typedef int32_t sub_topic_id_t;
+
 typedef struct _mqtt_sub_topic_t
 {
 	char name[32];
@@ -38,20 +40,19 @@ typedef struct _mqtt_data_t
 	bool connected;
 }mqtt_data_t;
 
-
-
 // This struct is used to move mqtt messages to the freertos tasks
 typedef struct _mqtt_os_message_t
 {
 	uint8_t data[MQTT_PAYLOAD_MAX_SIZE];
 	uint32_t len;
+	sub_topic_id_t topic_id;
 }mqtt_os_message_t;
-
 
 /* Exported Functions ---------------------------------------------------------*/
 void mqtt_init();
 void mqtt_test();
-err_t mqtt_sub_topic( const char* const topic_name , const osMessageQueueId_t os_queue_id );
+err_t mqtt_sub_topic( const char* const topic_name , const osMessageQueueId_t os_queue_id , sub_topic_id_t* const topic_id );
+err_t mqtt_unsub_topic( sub_topic_id_t topic_id );
 
 /* Inline Functions ---------------------------------------------------------*/
 inline bool compare_mqtt_payload( const mqtt_os_message_t* const message , const char* const string , bool match_size )

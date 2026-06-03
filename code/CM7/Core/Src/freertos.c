@@ -194,9 +194,10 @@ void StartDefaultTask(void *argument)
 	while( mqtt_data.connected != true )
 		osDelay( 100 );
 
+	sub_topic_id_t topic_id;
 	osMessageQueueId_t mqtt_queue = osMessageQueueNew( MQTT_OS_QUEUE_NUM_ELEMENTS , sizeof(mqtt_os_message_t*) , NULL );
 	vQueueAddToRegistry( mqtt_queue , "mqtt_lwl" );
-	mqtt_sub_topic( MQTT_SUB_LWL_ID , mqtt_queue );
+	mqtt_sub_topic( MQTT_SUB_LWL_ID , mqtt_queue , &topic_id );
 
 	while(1)
 	{
@@ -214,8 +215,6 @@ void StartDefaultTask(void *argument)
 		// free message
 		osMemoryPoolFree( mqtt_data.os_memory_pool , message );
 	}
-
-	osThreadExit();
   /* USER CODE END StartDefaultTask */
 }
 
@@ -234,9 +233,10 @@ void i2c4_task( void* argument )
 	while(mqtt_data.connected != true )
 		osDelay( 100 );
 
+	sub_topic_id_t topic_id;
 	osMessageQueueId_t mqtt_queue = osMessageQueueNew( MQTT_OS_QUEUE_NUM_ELEMENTS , sizeof(mqtt_os_message_t*) , NULL );
 	vQueueAddToRegistry( mqtt_queue , "mqtt_i2c4" );
-	mqtt_sub_topic( MQTT_SUB_LIS3_ID , mqtt_queue );
+	mqtt_sub_topic( MQTT_SUB_LIS3_ID , mqtt_queue , &topic_id );
 
 	while(1)
 	{
@@ -339,9 +339,10 @@ void spi1_task( void* argument )
 	while(mqtt_data.connected != true )
 		osDelay( 100 );
 
+	sub_topic_id_t topic_id;
 	osMessageQueueId_t mqtt_queue = osMessageQueueNew( MQTT_OS_QUEUE_NUM_ELEMENTS , sizeof(mqtt_os_message_t*) , NULL );
 	vQueueAddToRegistry( mqtt_queue , "mqtt_spi1" );
-	mqtt_sub_topic( MQTT_SUB_ALS_ID , mqtt_queue );
+	mqtt_sub_topic( MQTT_SUB_ALS_ID , mqtt_queue , &topic_id );
 
 	while(1)
 	{
@@ -377,9 +378,10 @@ void adc3_task( void* argument )
 	while(mqtt_data.connected != true )
 		osDelay( 100 );
 
+	sub_topic_id_t topic_id;
 	osMessageQueueId_t mqtt_queue = osMessageQueueNew( MQTT_OS_QUEUE_NUM_ELEMENTS , sizeof(mqtt_os_message_t*) , NULL );
 	vQueueAddToRegistry( mqtt_queue , "mqtt_adc3" );
-	mqtt_sub_topic( MQTT_SUB_TEMP_ID , mqtt_queue );
+	mqtt_sub_topic( MQTT_SUB_TEMP_ID , mqtt_queue , &topic_id );
 
 	while(1)
 	{
@@ -429,9 +431,10 @@ void eth_task( void* argument )
 	while(mqtt_data.connected != true )
 		osDelay( 100 );
 
+	sub_topic_id_t topic_id;
 	osMessageQueueId_t mqtt_queue = osMessageQueueNew( MQTT_OS_QUEUE_NUM_ELEMENTS , sizeof(mqtt_os_message_t*) , NULL );
 	vQueueAddToRegistry( mqtt_queue , "mqtt_lwip" );
-	mqtt_sub_topic( MQTT_SUB_ETH_TEST_ID , mqtt_queue );
+	mqtt_sub_topic( MQTT_SUB_ETH_TEST_ID , mqtt_queue , &topic_id );
 
 	while(1)
 	{

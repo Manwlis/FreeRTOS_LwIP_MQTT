@@ -25,10 +25,10 @@ static volatile int32_t mqtt_sub_topic_idx = MQTT_UNKOWN_TOPIC;
 
 /* Functions ---------------------------------------------------------*/
 /**
- * @brief
- * @param
- * @param
- * @param
+ * @brief	Topic Callback for the subscribed topics. Determines from which topic the incoming message originates.
+ * @param	arg
+ * @param	topic	Topic of the message
+ * @param	tot_len	Total length of the message
  */
 static void mqtt_incoming_publish_cb( void* arg , const char* topic , u32_t tot_len )
 {
@@ -48,11 +48,11 @@ static void mqtt_incoming_publish_cb( void* arg , const char* topic , u32_t tot_
 }
 
 /**
- * @brief
- * @param
- * @param
- * @param
- * @param
+ * @brief	Data callback for the subscribed topics. Pushes the payload to the appropriate task.
+ * @param	arg
+ * @param	data	Payload of the message
+ * @param	len		Size of the payload
+ * @param	flags	Data callback flags
  */
 static void mqtt_incoming_data_cb( void* arg , const u8_t* data , u16_t len , u8_t flags )
 {
@@ -97,6 +97,7 @@ static void mqtt_incoming_data_cb( void* arg , const u8_t* data , u16_t len , u8
 
 		msg->len = len;
 		memcpy( msg->data , data , msg->len );
+		msg->topic_id = mqtt_sub_topic_idx;
 
 		osStatus_t status = osMessageQueuePut( mqtt_data.sub_topics[mqtt_sub_topic_idx].os_queue_id , &msg , 0 , 0 );
 		if( status != osOK )
@@ -109,10 +110,10 @@ static void mqtt_incoming_data_cb( void* arg , const u8_t* data , u16_t len , u8
 }
 
 /**
- * @brief
- * @param
- * @param
- * @param
+ * @brief	Callback for when we get connected to the broker, or we failed to. Sets the sub callbacks
+ * @param	client
+ * @param	arg
+ * @param	status	Connection status code
  */
 static void mqtt_connection_cb( mqtt_client_t* client , void* arg , mqtt_connection_status_t status )
 { // TODO: reconnect when disconnected
@@ -134,7 +135,7 @@ static void mqtt_connection_cb( mqtt_client_t* client , void* arg , mqtt_connect
 }
 
 /**
- * @brief
+ * @brief Initializes everything needed by the mqtt client. Mqtt internals, memory pool, mqtt_data struct.
  */
 void mqtt_init()
 {
@@ -184,15 +185,18 @@ void mqtt_init()
 }
 
 /**
- * @brief
- * @param
- * @param
- * @retval
+ * @brief	Subscribe to a mqtt topic
+ * @param	topic_name	Name of the topic to subscribe
+ * @param	os_queue_id	Id of the os queue where the topic payload will be put into
+ * @param	topic_id	Id of the topic. -1 if failure
+ * @retval	ERR_OK if success, error code if failure
  */
-err_t mqtt_sub_topic( const char* const topic_name , const osMessageQueueId_t os_queue_id )
+err_t mqtt_sub_topic( const char* const topic_name , const osMessageQueueId_t os_queue_id , sub_topic_id_t* const topic_id )
 {
 	// this is a shared resource. Protect any changes on it.
 	taskENTER_CRITICAL( );
+
+	*topic_id = -1;
 
 	// check if there are any topic slots available
 	if( mqtt_data.num_topics == MQTT_MAX_TOPICS )
@@ -208,7 +212,9 @@ err_t mqtt_sub_topic( const char* const topic_name , const osMessageQueueId_t os
 
 	// subscribe to that topic
 	strcpy( mqtt_data.sub_topics[i].name , topic_name );
+	LOCK_TCPIP_CORE();
 	err_t error = mqtt_subscribe( mqtt_data.client , mqtt_data.sub_topics[i].name , 1 , NULL , NULL );
+	UNLOCK_TCPIP_CORE();
 	if( error != ERR_OK ) return error;
 
 	// connect OS queue
@@ -218,14 +224,37 @@ err_t mqtt_sub_topic( const char* const topic_name , const osMessageQueueId_t os
 	mqtt_data.sub_topics[i].valid = true;
 	mqtt_data.num_topics++;
 
+	*topic_id = i;
+
 	taskEXIT_CRITICAL( );
 
-	printf( "MQTT subscribed to %s, index = %u , queue = %d\n" , mqtt_data.sub_topics[i].name , i , mqtt_data.sub_topics[i].os_queue_id );
+	printf( "MQTT subscribed to %s, index = %u , queue = %d , id = %ld\n" , mqtt_data.sub_topics[i].name , i , (int)mqtt_data.sub_topics[i].os_queue_id , *topic_id );
 	return ERR_OK;
 }
 
 /**
- * @brief Publish an mqtt message every ~200ms, going through all pub topics, and containing a counter.
+ * @brief	Unsubs from a mqtt topic
+ * @param	topic_id Topic to unsub from
+ * @retval	ERR_OK if success, error code if failure
+ */
+err_t mqtt_unsub_topic( sub_topic_id_t topic_id )
+{
+	if( topic_id < 0 || topic_id > MQTT_MAX_TOPICS )
+		return ERR_VAL;
+
+	if( mqtt_data.sub_topics[topic_id].valid == false )
+		return ERR_ALREADY;
+
+	LOCK_TCPIP_CORE();
+	err_t error = mqtt_unsubscribe( mqtt_data.client , mqtt_data.sub_topics[topic_id].name , NULL , NULL );
+	UNLOCK_TCPIP_CORE();
+
+	mqtt_data.sub_topics[topic_id].valid = false;
+	return error;
+}
+
+/**
+ * @brief Publish an mqtt message every ~200ms, going through all sub topics, and containing a counter.
  */
 void mqtt_test()
 {
