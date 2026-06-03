@@ -51,6 +51,7 @@
 #define MQTT_PUB_ALS_LUX_ID		MQTT_SUB_ALS_ID "/lux"
 #define MQTT_PUB_TEMP_INT_ID	MQTT_SUB_TEMP_ID "/int"
 #define MQTT_PUB_TEMP_FLOAT_ID	MQTT_SUB_TEMP_ID "/float"
+#define MQTT_PUB_LIS3_TEMP_ID	MQTT_SUB_LIS3_ID "/temp"
 #define MQTT_PUB_LIS3_ACCEL_ID	MQTT_SUB_LIS3_ID "/accel"
 
 // other

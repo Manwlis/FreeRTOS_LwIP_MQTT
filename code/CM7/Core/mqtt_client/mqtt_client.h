@@ -54,12 +54,15 @@ void mqtt_test();
 err_t mqtt_sub_topic( const char* const topic_name , const osMessageQueueId_t os_queue_id );
 
 /* Inline Functions ---------------------------------------------------------*/
-inline bool compare_mqtt_payload( const mqtt_os_message_t* const message , const char* const string )
+inline bool compare_mqtt_payload( const mqtt_os_message_t* const message , const char* const string , bool match_size )
 {
 	if( message == NULL || string == NULL )
 		return false;
 
-	return ( message->len == strlen(string) ) && ( strncmp( (char*)message->data , string , message->len ) == 0 );
+	if( match_size == true )
+		return ( message->len == strlen(string) ) && ( strncmp( (char*)message->data , string , message->len ) == 0 );
+	else
+		return strncmp( (char*)message->data , string , strlen(string) ) == 0;
 }
 
 

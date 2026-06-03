@@ -224,7 +224,7 @@ void StartDefaultTask(void *argument)
 			continue; // did we loose a message here. Should this be logged? Can status be not OK but message pointer valid? Then we have memory leak.
 
 		// consume message
-		if( compare_mqtt_payload( message , "dump" ) )
+		if( compare_mqtt_payload( message , "dump" , true ) )
 			dump_log_mqtt();
 
 		// free message
@@ -264,60 +264,77 @@ void i2c4_task( void* argument )
 			continue; // did we loose a message here. Should this be logged? Can status be not OK but message pointer valid? Then we have memory leak.
 
 
-		if( compare_mqtt_payload( message , "enable aux dacs" ) )
+		if( compare_mqtt_payload( message , "enable aux dacs" , true ) )
 		{
 			LIS3DHTR_enable_aux_adcs( &LIS3DHTR_handle );
 		}
-		else if( compare_mqtt_payload( message , "disable aux dacs" ) )
+		else if( compare_mqtt_payload( message , "disable aux dacs" , true ) )
 		{
 			LIS3DHTR_disable_aux_adcs( &LIS3DHTR_handle );
 		}
-		else if( compare_mqtt_payload( message , "enable temp sensor" ) )
+		else if( compare_mqtt_payload( message , "enable temp" , true ) )
 		{
 			LIS3DHTR_enable_temp_sensor( &LIS3DHTR_handle );
 		}
-		else if( compare_mqtt_payload( message , "disable temp sensor" ) )
+		else if( compare_mqtt_payload( message , "disable temp" , true ) )
 		{
 			LIS3DHTR_disable_temp_sensor( &LIS3DHTR_handle );
 		}
-		else if( compare_mqtt_payload( message , "enable bdu" ) )
+		else if( compare_mqtt_payload( message , "enable bdu" , true ) )
 		{
 			LIS3DHTR_enable_BDU( &LIS3DHTR_handle );
 		}
-		else if( compare_mqtt_payload( message , "disable bdu" ) )
+		else if( compare_mqtt_payload( message , "disable bdu" , true ) )
 		{
 			LIS3DHTR_disable_BDU( &LIS3DHTR_handle );
 		}
-		else if( compare_mqtt_payload( message , "set odr" ) )
+		else if( compare_mqtt_payload( message , "set odr" , false ) )
 		{
-			LIS3DHTR_set_ODR( &LIS3DHTR_handle , ODR_100HZ );
-		}
-		else if( compare_mqtt_payload( message , "set res" ) )
-		{
-			LIS3DHTR_set_resolution( &LIS3DHTR_handle , LIS3DHTR_LOW_POWER );
-		}
-		else if( compare_mqtt_payload( message , "get temp" ) )
-		{
+			const uint32_t prefix_len = sizeof("set odr ");	// mqtt command must have an extra numeric digit but no \0
+			if( message->len != prefix_len ){ continue; }	// thus same size as with the compare string
 
+			// get the numeric digit and convert it to int
+			int32_t option = message->data[prefix_len-1] - '0';
+
+			// check that it is a valid option
+			if( option < ODR_POWER_DOWN || option > ODR_5_376KHZ ){ continue; }
+
+			LIS3DHTR_set_ODR( &LIS3DHTR_handle , option );
 		}
-		else if( compare_mqtt_payload( message , "get accel" ) )
+		else if( compare_mqtt_payload( message , "set res" , false ) )
+		{
+			const uint32_t prefix_len = sizeof("set res ");	// mqtt command must have an extra numeric digit but no \0
+			if( message->len != prefix_len ){ continue; }	// thus same size as with the compare string
+
+			// get the numeric digit and convert it to int
+			int32_t option = message->data[prefix_len-1] - '0';
+
+			// check that it is a valid option
+			if( option < LIS3DHTR_LOW_POWER || option > LIS3DHTR_HIGH ){ continue; }
+
+			LIS3DHTR_set_resolution( &LIS3DHTR_handle , option );
+		}
+		else if( compare_mqtt_payload( message , "get temp" , true ) )
+		{
+			float temp;
+			LIS3DHTR_get_temp( &LIS3DHTR_handle , &temp );
+
+			mqtt_publish_wrapper( mqtt_data.client , MQTT_PUB_LIS3_TEMP_ID , &temp , sizeof( temp ) , 0 , 0 , NULL , NULL );
+		}
+		else if( compare_mqtt_payload( message , "get accel" , true ) )
 		{
 			float x;
 			float y;
 			float z;
 			LIS3DHTR_get_acceleration( &LIS3DHTR_handle , &x , &y , &z );
 
-			uint8_t metadata[ sizeof(x) + sizeof(y) + sizeof(z) ];
-			memcpy( &(metadata[0]) , &(x) , sizeof(x) );
-			memcpy( &(metadata[sizeof(x)]) , &(y) , sizeof(y) );
-			memcpy( &(metadata[sizeof(x)+sizeof(y)]) , &(z) , sizeof(z) );
+			uint8_t data[ sizeof(x) + sizeof(y) + sizeof(z) ];
+			memcpy( &(data[0]) , &(x) , sizeof(x) );
+			memcpy( &(data[sizeof(x)]) , &(y) , sizeof(y) );
+			memcpy( &(data[sizeof(x)+sizeof(y)]) , &(z) , sizeof(z) );
 
-			mqtt_publish_wrapper( mqtt_data.client , MQTT_PUB_LIS3_ACCEL_ID , metadata , sizeof( metadata ) , 0 , 0 , NULL , NULL );
+			mqtt_publish_wrapper( mqtt_data.client , MQTT_PUB_LIS3_ACCEL_ID , data , sizeof( data ) , 0 , 0 , NULL , NULL );
 		}
-
-
-		// consume message
-		printf("i2c4_task received command: %s\n" , (char*)(message->data) );
 
 		// free message
 		osMemoryPoolFree( mqtt_data.os_memory_pool , message );
@@ -352,7 +369,7 @@ void spi1_task( void* argument )
 			continue; // did we loose a message here. Should this be logged? Can status be not OK but message pointer valid? Then we have memory leak.
 
 		// consume message
-		if( compare_mqtt_payload( message , "get lux" ) )
+		if( compare_mqtt_payload( message , "get lux" , true ) )
 		{
 			float lux = 0;
 			pmodals_get_lux( &pmodals_handle , &lux );
@@ -390,21 +407,21 @@ void adc3_task( void* argument )
 			continue; // did we loose a message here. Should this be logged? Can status be not OK but message pointer valid? Then we have memory leak.
 
 		// consume message
-		if( compare_mqtt_payload( message , "int" ) )
+		if( compare_mqtt_payload( message , "int" , true ) )
 		{
 			int32_t temp = 0;
 			calc_ADC_temp_int( &temp );
 
 			mqtt_publish_wrapper( mqtt_data.client , MQTT_PUB_TEMP_INT_ID , &temp , sizeof( temp ) , 0 , 0 , NULL , NULL );
 		}
-		else if( compare_mqtt_payload( message , "reduced" ) )
+		else if( compare_mqtt_payload( message , "reduced" , true ) )
 		{
 			int32_t temp = 0;
 			calc_ADC_temp_reduced_div( &temp );
 
 			mqtt_publish_wrapper( mqtt_data.client , MQTT_PUB_TEMP_INT_ID , &temp , sizeof( temp ) , 0 , 0 , NULL , NULL );
 		}
-		else if( compare_mqtt_payload( message , "float" ) )
+		else if( compare_mqtt_payload( message , "float" , true ) )
 		{
 			float temp = 0;
 			calc_ADC_temp_float( &temp );
@@ -434,32 +451,35 @@ void eth_task( void* argument )
 {
 	UNUSED( argument );
 
+	osDelay(2000);
+	tcp_set_up();
+	osDelay(2000);
+	tcp_loopback();
 
-
-	// connect to mqtt
-	while(mqtt_data.connected != true )
-		osDelay( 100 );
-
-	osMessageQueueId_t mqtt_queue = osMessageQueueNew( MQTT_OS_QUEUE_NUM_ELEMENTS , sizeof(mqtt_os_message_t*) , NULL );
-	vQueueAddToRegistry( mqtt_queue , "mqtt_lwip" );
-	mqtt_sub_topic( MQTT_SUB_ETH_TEST_ID , mqtt_queue );
-
-	while(1)
-	{
-		// wait for queue message
-		mqtt_os_message_t* msg = NULL;
-		osStatus_t status = osMessageQueueGet( mqtt_queue , &msg , NULL , osWaitForever );
-
-		if( msg == NULL || status != osOK )
-			continue; // did we loose a message here. Should this be logged? Can status be not OK but message pointer valid? Then we have memory leak.
-
-		printf("eth_task received command: %s\n" , (char*)(msg->data) );
-
-
-
-		osMemoryPoolFree( mqtt_data.os_memory_pool , msg );
-	}
-	osThreadExit();
+//	// connect to mqtt
+//	while(mqtt_data.connected != true )
+//		osDelay( 100 );
+//
+//	osMessageQueueId_t mqtt_queue = osMessageQueueNew( MQTT_OS_QUEUE_NUM_ELEMENTS , sizeof(mqtt_os_message_t*) , NULL );
+//	vQueueAddToRegistry( mqtt_queue , "mqtt_lwip" );
+//	mqtt_sub_topic( MQTT_SUB_ETH_TEST_ID , mqtt_queue );
+//
+//	while(1)
+//	{
+//		// wait for queue message
+//		mqtt_os_message_t* msg = NULL;
+//		osStatus_t status = osMessageQueueGet( mqtt_queue , &msg , NULL , osWaitForever );
+//
+//		if( msg == NULL || status != osOK )
+//			continue; // did we loose a message here. Should this be logged? Can status be not OK but message pointer valid? Then we have memory leak.
+//
+//		printf("eth_task received command: %s\n" , (char*)(msg->data) );
+//
+//
+//
+//		osMemoryPoolFree( mqtt_data.os_memory_pool , msg );
+//	}
+//	osThreadExit();
 }
 
 
