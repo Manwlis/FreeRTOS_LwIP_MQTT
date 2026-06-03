@@ -70,7 +70,6 @@ inline err_t mqtt_publish_wrapper( mqtt_client_t *client , const char *topic , c
 	err_t rv = mqtt_publish( client , topic , payload , payload_length , qos , retain , cb , arg );
 	UNLOCK_TCPIP_CORE();
 
-	printf( "pub rv = %d\n" , rv );
 	return rv;
 }
 

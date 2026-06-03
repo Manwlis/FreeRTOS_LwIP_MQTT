@@ -15,6 +15,9 @@
 #include "stm32h7xx_nucleo.h"
 #include "stm32h7xx_hal.h"
 
+#include "FreeRTOS.h"
+#include "task.h" // taskENTER_CRITICAL()
+
 /* Macros ------------------------------------------------------------------*/
 #define LWL_BUFFER_SIZE 2048	// in bytes
 #define IS_POWER_OF_2( x ) ( ( x ) > 0 && ( ( ( x ) & ( ( x ) - 1 ) ) == 0 ) )
@@ -140,24 +143,28 @@ void lwl_enter_record( uint8_t module_id , char functionality_id[] , const char*
 #include "tcpip.h"
 void dump_log_mqtt()
 {
-	// make sure it does not change while dumping. We may loose a few entries while dumping but it is better than corrupting the data.
-	lwl_driver.is_initialized = false;
+	// take a snapshot of the lwl data & metadata. Make sure that nothing change while coping
+	taskENTER_CRITICAL( );
 
 	uint8_t metadata[ sizeof(lwl_data.next_entry_index) + sizeof(uint32_t) ];
 	memcpy( &(metadata[0]) , &(lwl_data.next_entry_index) , sizeof(lwl_data.next_entry_index) );
 	memcpy( &(metadata[sizeof(lwl_data.next_entry_index)]) , &(uint32_t){LWL_BUFFER_SIZE} , sizeof(uint32_t) );
+	static uint8_t data[LWL_BUFFER_SIZE];
+	memcpy( data , lwl_driver.data , sizeof(data) );
 
-	mqtt_publish( mqtt_data.client , MQTT_PUB_LWL_INDEX_ID , metadata , sizeof(metadata) , 0 , 0 , NULL , NULL );
+	taskEXIT_CRITICAL( );
+
+	// send the snapshot through mqtt
+	mqtt_publish_wrapper( mqtt_data.client , MQTT_PUB_LWL_INDEX_ID , metadata , sizeof(metadata) , 1 , 0 , NULL , NULL );
 
 	int32_t current_sent_size = 0;
 	for( int32_t remaining_data = LWL_BUFFER_SIZE ; remaining_data > 0 ; remaining_data -= current_sent_size )
 	{
-		const int32_t payload_max_size = MQTT_OUTPUT_RINGBUF_SIZE - sizeof(MQTT_PUB_LWL_DATA_ID) - 8; // dont know why -5. According to mqtt, largest outgoing publish message = topic+payloads
+		const int32_t payload_max_size = MQTT_OUTPUT_RINGBUF_SIZE - sizeof(MQTT_PUB_LWL_DATA_ID) - 8; // dont know why -8. According to mqtt, largest outgoing publish message = topic+payloads
 		current_sent_size = ( remaining_data > payload_max_size ) ? payload_max_size : remaining_data ;
 
+		osDelay(5); // mqtt looses data when sending a burst after idling. This small delay seems to fix it.
 		mqtt_publish_wrapper( mqtt_data.client , MQTT_PUB_LWL_DATA_ID , &(lwl_data.buffer[LWL_BUFFER_SIZE - remaining_data]) , current_sent_size , 1 , 0 , NULL , NULL );
-
 	}
-	lwl_driver.is_initialized = true;
 }
 #endif

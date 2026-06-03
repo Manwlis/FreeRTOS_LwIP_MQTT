@@ -60,7 +60,7 @@
 /*----- Default Value for MEMP_NUM_PBUF: 16 ---*/
 #define MEMP_NUM_PBUF 64
 /*----- Default Value for MEMP_NUM_TCP_SEG: 16 ---*/
-#define MEMP_NUM_TCP_SEG 64
+#define MEMP_NUM_TCP_SEG 128
 /*----- Value supported for H7 devices: 1 -----*/
 #define LWIP_SUPPORT_CUSTOM_PBUF 1
 /*----- Default Value for PBUF_POOL_SIZE: 16 ---*/
@@ -78,7 +78,7 @@
 /*----- Default Value for TCP_SND_BUF: 2920 ---*/
 #define TCP_SND_BUF 23360
 /*----- Default Value for TCP_SND_QUEUELEN: 65 ---*/
-#define TCP_SND_QUEUELEN 64
+#define TCP_SND_QUEUELEN 128
 /*----- Default Value for LWIP_WND_SCALE: 0 ---*/
 #define LWIP_WND_SCALE 1
 /*----- Value in opt.h for TCP_RCV_SCALE: undefined if LWIP_WND_SCALE is defined -----*/
@@ -136,10 +136,14 @@
 //#define TCP_DEBUG LWIP_DBG_ON
 //#define LWIP_PLATFORM_DIAG(x) do {printf x;fflush(0);} while(0)
 
-#define LWIP_MQTT 16
-#define MEMP_NUM_SYS_TIMEOUT 6 + LWIP_MQTT // 6 is the default
+//#define LWIP_MQTT 16
+//#define MEMP_NUM_SYS_TIMEOUT 6 + LWIP_MQTT // 6 is the default
+#define MEMP_NUM_SYS_TIMEOUT   (LWIP_NUM_SYS_TIMEOUT_INTERNAL + 1)
 
 #define MQTT_REQ_MAX_IN_FLIGHT 16
+
+ // TCP_SND_QUEUELEN default = 65
+ // MEMP_NUM_TCP_SEG = TCP_SND_QUEUELEN
 //#define MQTT_OUTPUT_RINGBUF_SIZE 512
 
 #define LWIP_TCPIP_CORE_LOCKING 1
