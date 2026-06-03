@@ -2,17 +2,16 @@
  * tcp_loopback_multitask.c
  *
  */
-#include "settings.h"
 
-#if CURRENT_TEST == TCP_LOOPBACK_MULTITASK
 
 /* Includes ----------------------------------------------------------*/
-#include <socket.h>
-#include <stdio.h>
+#include "settings.h"
 #include "lwip.h"
+#include <socket.h>
+#include "cmsis_os2.h"
 #include "FreeRTOS.h"
 #include "queue.h" // vQueueAddToRegistry
-
+#include "mqtt_client.h"
 
 /* Defines -----------------------------------------------------------*/
 
@@ -23,16 +22,19 @@ typedef struct
 	struct network_mbuf_t
 	{
 		size_t len;
-		uint8_t data[MESSAGE_SIZE];
+		uint8_t data[NETWORK_MESSAGE_SIZE];
 	} buffer; // buffer for the messages received from the network
 } network_message_t;
 
 /* Variables ---------------------------------------------------------*/
-int sockfd;
+static int sockfd;
 
-osMessageQueueId_t network_message_free;
-osMessageQueueId_t network_message_rx_to_tx;
-static network_message_t network_message_pool[NUM_NETWORK_MESSAGES];
+static osThreadId_t rx_task_handle;
+static osThreadId_t tx_task_handle;
+
+static osMessageQueueId_t network_message_free;
+static osMessageQueueId_t network_message_rx_to_tx;
+static network_message_t network_message_pool[NUM_NETWORK_MESSAGES]; // using osMemoryPool would be more idiomatic and safe
 
 /* Functions ---------------------------------------------------------*/
 void set_up_queues()
@@ -51,8 +53,10 @@ void set_up_queues()
 	vQueueAddToRegistry( network_message_rx_to_tx , "network_msg_rx_to_tx" );
 }
 
-void tcp_set_up()
+void tcp_multi_set_up()
 {
+	set_up_queues();
+
 	struct sockaddr_in addr;
 	memset( &addr , 0 , sizeof( addr ) );
 
@@ -82,86 +86,116 @@ void tcp_set_up()
 	printf( "Link: %d\n" , netif_is_link_up( &gnetif ) );
 }
 
-void tcp_rx()
+void tcp_multi_rx( osMessageQueueId_t mqtt_queue )
 {
 	uint8_t msg_prio = 0;
+	network_message_t* network_message;
 
 	for( ; ; )
 	{
-		network_message_t* message;
+		// check for stop command
+		mqtt_os_message_t* message = NULL;
+		osStatus_t status = osMessageQueueGet( mqtt_queue , &message , NULL , 0 );
 
-		// Get free buffer
-		if( osMessageQueueGet( network_message_free , &message , &msg_prio , osWaitForever ) != osOK )
-			continue;
-
-		// Get message
-		size_t received_bytes = 0;
-
-		while( received_bytes < MESSAGE_SIZE )
+		if( status == osOK && message != NULL )
 		{
-			int ret = lwip_read( sockfd , message->buffer.data + received_bytes , MESSAGE_SIZE - received_bytes );
-
-			if( ret <= 0 )
+			if( compare_mqtt_payload( message , "stop" , true ) )
 			{
-				// connection closed, send message to the following task
-				message->type = CLOSED;
-				osMessageQueuePut( network_message_rx_to_tx , &message , msg_prio , osWaitForever );
+				// connection closed, send message to the tx task
+				network_message->type = CLOSED;
+				osMessageQueuePut( network_message_rx_to_tx , &network_message , msg_prio , osWaitForever );
+
+				osMemoryPoolFree( mqtt_data.os_memory_pool , message );
 				return;
 			}
-			received_bytes += ret;
+			osMemoryPoolFree( mqtt_data.os_memory_pool , message );
 		}
 
-		message->type = DATA;
-		message->buffer.len = received_bytes;
+		for( int i = 0 ; i < 1000 ; i++ )
+		{
+			// Get free buffer
+			if( osMessageQueueGet( network_message_free , &network_message , &msg_prio , osWaitForever ) != osOK )
+				continue;
 
-		// Notify next task that data is available
-		osMessageQueuePut( network_message_rx_to_tx , &message , msg_prio , osWaitForever );
+			// Get network message
+			size_t received_bytes = 0;
+
+			while( received_bytes < NETWORK_MESSAGE_SIZE )
+			{
+				int ret = lwip_read( sockfd , network_message->buffer.data + received_bytes , NETWORK_MESSAGE_SIZE - received_bytes );
+
+				if( ret <= 0 )
+				{
+					// connection closed, send message to the tx task
+					network_message->type = CLOSED;
+					osMessageQueuePut( network_message_rx_to_tx , &network_message , msg_prio , osWaitForever );
+					return;
+				}
+				received_bytes += ret;
+			}
+
+			network_message->type = DATA;
+			network_message->buffer.len = received_bytes;
+
+			// Notify next task that data is available
+			osMessageQueuePut( network_message_rx_to_tx , &network_message , msg_prio , osWaitForever );
+		}
 	}
 }
 
-void tcp_tx()
+void tcp_multi_tx()
 {
 	uint8_t msg_prio = 0;
+	network_message_t* network_message;
 
 	for( ; ; )
 	{
-		network_message_t* message;
-
 		// Wait until a message is available
-		if( osMessageQueueGet( network_message_rx_to_tx , &message , &msg_prio , osWaitForever ) != osOK )
+		if( osMessageQueueGet( network_message_rx_to_tx , &network_message , &msg_prio , osWaitForever ) != osOK )
 			continue;
 
-		if( message->type == CLOSED )
+		if( network_message->type == CLOSED )
 		{
 			// connection closed, return message to queue
-			osMessageQueuePut( network_message_free , &message , msg_prio , 0 );
-			return;
+			osMessageQueuePut( network_message_free , &network_message , msg_prio , 0 );
+			osThreadExit();
 		}
 
 		// Transmit it back
 		size_t sent_bytes = 0;
 
-		while( sent_bytes < message->buffer.len )
+		while( sent_bytes < network_message->buffer.len )
 		{
-			int ret = lwip_write( sockfd , message->buffer.data + sent_bytes , message->buffer.len - sent_bytes );
+			int ret = lwip_write( sockfd , network_message->buffer.data + sent_bytes , network_message->buffer.len - sent_bytes );
 
 			if( ret <= 0 )
 			{
 				// connection closed, return message to queue
-				osMessageQueuePut( network_message_free , &message , msg_prio , 0 );
-				return;
+				osMessageQueuePut( network_message_free , &network_message , msg_prio , 0 );
+				osThreadExit();
 			}
 
 			sent_bytes += ret;
 		}
 
 		// Return buffer to pool
-		osMessageQueuePut( network_message_free , &message , msg_prio , osWaitForever );
+		osMessageQueuePut( network_message_free , &network_message , msg_prio , osWaitForever );
 	}
 }
 
 
-void tcp_destroy()
+void tcp_multi_loopback( osMessageQueueId_t mqtt_queue )
+{
+	rx_task_handle = osThreadGetId();
+
+	const osThreadAttr_t tx_task_attributes = { .name = "tx_task" , .stack_size = 2048 , .priority = (osPriority_t) osPriorityNormal1 , };
+	tx_task_handle = osThreadNew( tcp_multi_tx , NULL , &tx_task_attributes );
+
+	tcp_multi_rx( mqtt_queue );
+}
+
+
+void tcp_multi_destroy()
 {
 	lwip_shutdown( sockfd , SHUT_RDWR );
 	lwip_close( sockfd );
@@ -170,5 +204,3 @@ void tcp_destroy()
 	osMessageQueueDelete( network_message_free );
 	osMessageQueueDelete( network_message_rx_to_tx );
 }
-
-#endif

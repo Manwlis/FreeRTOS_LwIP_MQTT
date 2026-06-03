@@ -2,26 +2,25 @@
  * tcp_loopback.c
  *
  */
-#include "settings.h"
 
-#if CURRENT_TEST == TCP_LOOPBACK
 /* Includes ----------------------------------------------------------*/
+#include "settings.h"
 #include "tcp_loopback_simple.h"
-#include "lwip.h"
 #include <socket.h>
-#include <stdio.h>
+#include "lwip.h"
+#include "mqtt_client.h"
 
 /* Defines -----------------------------------------------------------*/
 
 /* Typedef -----------------------------------------------------------*/
 
 /* Variables ---------------------------------------------------------*/
-int sockfd;
+static int sockfd;
 
 /* Function prototypes -----------------------------------------------*/
 
 /* Functions -----------------------------------------------*/
-void tcp_set_up()
+void tcp_simple_set_up()
 {
 	struct sockaddr_in addr;
 	memset( &addr , 0 , sizeof( addr ) );
@@ -54,24 +53,42 @@ void tcp_set_up()
 
 /**
  * @brief  TCP loopback test.
+ * @param mqtt_queue	Queue where the stop command is expected to come from
  * @retval None
  */
-void tcp_loopback()
+void tcp_simple_loopback( osMessageQueueId_t mqtt_queue )
 {
 	for( ; ; )
 	{
-		static char recv_message[MESSAGE_SIZE];
-		// TODO: convert this to use select
-		volatile ssize_t read_len = lwip_read( sockfd , recv_message , MESSAGE_SIZE );
-		volatile ssize_t write_len = lwip_write( sockfd , recv_message , read_len );
+		// check for stop command
+		mqtt_os_message_t* mqtt_message = NULL;
+		osStatus_t status = osMessageQueueGet( mqtt_queue , &mqtt_message , NULL , 0 );
+
+		if( status == osOK && mqtt_message != NULL )
+		{
+			if( compare_mqtt_payload( mqtt_message , "stop" , true ) )
+			{
+				osMemoryPoolFree( mqtt_data.os_memory_pool , mqtt_message );
+				return;
+			}
+			osMemoryPoolFree( mqtt_data.os_memory_pool , mqtt_message );
+		}
+
+		 // check the queue ever 1000 packets
+		for( int i = 0 ; i < 1000 ; i++ )
+		{
+			static char network_message[NETWORK_MESSAGE_SIZE];
+			volatile ssize_t read_len = lwip_read( sockfd , network_message , NETWORK_MESSAGE_SIZE );
+			if( read_len == -1 ) return;
+			volatile ssize_t write_len = lwip_write( sockfd , network_message , read_len );
+			if( write_len == -1 ) return;
+		}
 	}
 }
 
-void tcp_destroy()
+void tcp_simple_destroy()
 {
-	lwip_shutdown( sockfd , SHUT_RDWR );   // optional but recommended
+	lwip_shutdown( sockfd , SHUT_RDWR );
 	lwip_close( sockfd );
 	sockfd = -1;
 }
-
-#endif

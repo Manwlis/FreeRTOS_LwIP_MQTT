@@ -1,16 +1,8 @@
 // Eth Test settings ----------------------------------------------------------
-#define UDP_TX_BENCHMARK		0
-#define TCP_LOOPBACK			1
-#define TCP_LOOPBACK_MULTITASK	2
-
-#define CURRENT_TEST	TCP_LOOPBACK
-
-#if CURRENT_TEST == TCP_LOOPBACK_MULTITASK
 #define NUM_NETWORK_MESSAGES 16
-#endif
 
 // network settings -----------------------------------------------------------
-#define MESSAGE_SIZE	1460
+#define NETWORK_MESSAGE_SIZE	1460
 #define ETH_SERVER_PORT	55151
 
 #define ETH_SERVER_IP_1	192

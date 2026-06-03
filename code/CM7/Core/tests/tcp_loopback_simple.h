@@ -6,13 +6,11 @@
 #ifndef TESTS_TCP_LOOPBACK_SIMPLE_H_
 #define TESTS_TCP_LOOPBACK_SIMPLE_H_
 
-#include "settings.h"
+#include "mqtt_client.h"
 
-#if CURRENT_TEST == TCP_LOOPBACK
 /* Exported functions prototypes ---------------------------------------------*/
-void tcp_set_up();
-void tcp_loopback();
-void tcp_destroy();
+void tcp_simple_set_up();
+void tcp_simple_loopback( osMessageQueueId_t mqtt_queue );
+void tcp_simple_destroy();
 
-#endif //CURRENT_TEST == TCP_LOOPBACK
 #endif /* TESTS_TCP_LOOPBACK_SIMPLE_H_ */

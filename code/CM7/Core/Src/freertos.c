@@ -31,13 +31,9 @@
 #include "settings.h"
 #include "stm32h7xx_it.h" // for the RUN_TIME_STATS
 
-#if CURRENT_TEST == UDP_TX_BENCHMARK
 #include "udp_test.h"
-#elif CURRENT_TEST == TCP_LOOPBACK
 #include "tcp_loopback_simple.h"
-#elif CURRENT_TEST == TCP_LOOPBACK_MULTITASK
 #include "tcp_loopback_multitask.h"
-#endif
 
 #include "mqtt_client.h"
 #include "i2c.h"
@@ -68,11 +64,6 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
-#if CURRENT_TEST == TCP_LOOPBACK_MULTITASK
-osThreadId_t tx_task_handle;
-const osThreadAttr_t tx_task_attributes = { .name = "tx_task" , .stack_size = 256 * 4 , .priority = (osPriority_t) osPriorityNormal1 , };
-#endif
-
 const osThreadAttr_t i2c4_task_attributes = { .name = "i2c4_task" , .stack_size = 2048 , .priority = (osPriority_t) osPriorityNormal , };
 const osThreadAttr_t spi1_task_attributes = { .name = "spi1_task" , .stack_size = 2048 , .priority = (osPriority_t) osPriorityNormal , };
 const osThreadAttr_t adc3_task_attributes = { .name = "adc3_task" , .stack_size = 2048 , .priority = (osPriority_t) osPriorityNormal , };
@@ -163,9 +154,6 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_TIMERS */
 
   /* USER CODE BEGIN RTOS_QUEUES */
-#if CURRENT_TEST == TCP_LOOPBACK_MULTITASK
-	set_up_queues();
-#endif
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
@@ -173,10 +161,6 @@ void MX_FREERTOS_Init(void) {
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
-#if CURRENT_TEST == TCP_LOOPBACK_MULTITASK
-	tx_task_handle = osThreadNew( StartTxTask , NULL , &tx_task_attributes );
-#endif
-
 	i2c4_task_handle = osThreadNew( i2c4_task , NULL, &i2c4_task_attributes);
 	spi1_task_handle = osThreadNew( spi1_task , NULL, &spi1_task_attributes);
 	adc3_task_handle = osThreadNew( adc3_task , NULL, &adc3_task_attributes);
@@ -436,50 +420,57 @@ void adc3_task( void* argument )
 }
 
 
-#if ( CURRENT_TEST == TCP_LOOPBACK_MULTITASK )
-void eth_tx_task( void* argument )
-{
-	UNUSED( argument );
-
-	tcp_tx();
-	osThreadFlagsSet( defaultTaskHandle , 0x0001U );
-	osThreadExit();
-}
-#endif
-
 void eth_task( void* argument )
 {
 	UNUSED( argument );
 
-	osDelay(2000);
-	tcp_set_up();
-	osDelay(2000);
-	tcp_loopback();
 
-//	// connect to mqtt
-//	while(mqtt_data.connected != true )
-//		osDelay( 100 );
-//
-//	osMessageQueueId_t mqtt_queue = osMessageQueueNew( MQTT_OS_QUEUE_NUM_ELEMENTS , sizeof(mqtt_os_message_t*) , NULL );
-//	vQueueAddToRegistry( mqtt_queue , "mqtt_lwip" );
-//	mqtt_sub_topic( MQTT_SUB_ETH_TEST_ID , mqtt_queue );
-//
-//	while(1)
-//	{
-//		// wait for queue message
-//		mqtt_os_message_t* msg = NULL;
-//		osStatus_t status = osMessageQueueGet( mqtt_queue , &msg , NULL , osWaitForever );
-//
-//		if( msg == NULL || status != osOK )
-//			continue; // did we loose a message here. Should this be logged? Can status be not OK but message pointer valid? Then we have memory leak.
-//
-//		printf("eth_task received command: %s\n" , (char*)(msg->data) );
-//
-//
-//
-//		osMemoryPoolFree( mqtt_data.os_memory_pool , msg );
-//	}
-//	osThreadExit();
+	// connect to mqtt
+	while(mqtt_data.connected != true )
+		osDelay( 100 );
+
+	osMessageQueueId_t mqtt_queue = osMessageQueueNew( MQTT_OS_QUEUE_NUM_ELEMENTS , sizeof(mqtt_os_message_t*) , NULL );
+	vQueueAddToRegistry( mqtt_queue , "mqtt_lwip" );
+	mqtt_sub_topic( MQTT_SUB_ETH_TEST_ID , mqtt_queue );
+
+	while(1)
+	{
+		// wait for queue message
+		mqtt_os_message_t* message = NULL;
+		osStatus_t status = osMessageQueueGet( mqtt_queue , &message , NULL , osWaitForever );
+
+		if( message == NULL || status != osOK )
+			continue; // did we loose a message here. Should this be logged? Can status be not OK but message pointer valid? Then we have memory leak.
+
+		// Copy message locally so we can free it. The test might take a while.
+		mqtt_os_message_t local_message;
+		memcpy( local_message.data , message->data , MQTT_PAYLOAD_MAX_SIZE );
+		local_message.len = message->len;
+
+		osMemoryPoolFree( mqtt_data.os_memory_pool , message );
+
+		if( compare_mqtt_payload( &local_message , "tcp simple" , true ) )
+		{
+			tcp_simple_set_up();
+			tcp_simple_loopback( mqtt_queue );
+			tcp_simple_destroy();
+		}
+		else if( compare_mqtt_payload( &local_message , "udp" , true ) )
+		{
+			udp_set_up();
+			udp_tx_datahose( mqtt_queue );
+			udp_destroy();
+		}
+		else if( compare_mqtt_payload( &local_message , "tcp multi" , true ) )
+		{
+			tcp_multi_set_up();
+			tcp_multi_loopback( mqtt_queue );
+			tcp_multi_destroy();
+		}
+
+
+	}
+	osThreadExit();
 }
 
 

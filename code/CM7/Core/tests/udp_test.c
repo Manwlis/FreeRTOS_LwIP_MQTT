@@ -5,30 +5,22 @@
 
 /* Includes ----------------------------------------------------------*/
 #include "settings.h"
-
-#if CURRENT_TEST == UDP_TX_BENCHMARK
-
-#include <socket.h>
-#include <stdio.h>
 #include "lwip.h"
+#include <socket.h>
+#include "mqtt_client.h"
 
 /* Typedef -----------------------------------------------------------*/
 
 /* Variables ---------------------------------------------------------*/
+static int sockfd;
+static struct sockaddr_in addr;
 
 /* Functions ---------------------------------------------------------*/
-/**
- * @brief  UDP transmit test.
- * @retval None
- */
-void udp_tx_benchmark()
+
+void udp_set_up()
 {
-	static const char message[MESSAGE_SIZE] = { [0 ... ( MESSAGE_SIZE - 1 )] = 1 };
+	sockfd = socket( AF_INET , SOCK_DGRAM , 0 );
 
-	/* Init UDP connection */
-	int sockfd = socket( AF_INET , SOCK_DGRAM , 0 );
-
-	struct sockaddr_in addr;
 	memset( &addr , 0 , sizeof( addr ) );
 
 	addr.sin_family = AF_INET;
@@ -44,11 +36,40 @@ void udp_tx_benchmark()
 	printf( "GW: %s\n"    , ipaddr_ntoa( &gnetif.gw ) );
 	printf( "netif: %d\n" , netif_is_up( &gnetif ) );
 	printf( "Link: %d\n"  , netif_is_link_up( &gnetif ) );
+}
+/**
+ * @brief  UDP transmit test.
+ * @retval None
+ */
+void udp_tx_datahose( osMessageQueueId_t mqtt_queue )
+{
 
 	for( ; ; )
-		if( sendto( sockfd , message , MESSAGE_SIZE , 0 , (struct sockaddr* )&addr , sizeof( addr ) ) == -1 )
-			break;
+	{
+		// check for stop command
+		mqtt_os_message_t* mqtt_message = NULL;
+		osStatus_t status = osMessageQueueGet( mqtt_queue , &mqtt_message , NULL , 0 );
 
+		if( status == osOK && mqtt_message != NULL )
+		{
+			if( compare_mqtt_payload( mqtt_message , "stop" , true ) )
+			{
+				osMemoryPoolFree( mqtt_data.os_memory_pool , mqtt_message );
+				break;
+			}
+			osMemoryPoolFree( mqtt_data.os_memory_pool , mqtt_message );
+		}
+
+		// send the message 1000 times
+		static const char network_message[NETWORK_MESSAGE_SIZE] = { [0 ... ( NETWORK_MESSAGE_SIZE - 1 )] = 1 };
+
+		for( int i = 0 ; i < 1000 ; i++ )
+			if( sendto( sockfd , network_message , NETWORK_MESSAGE_SIZE , 0 , (struct sockaddr* )&addr , sizeof( addr ) ) == -1 )
+				return;
+	}
+}
+
+void udp_destroy()
+{
 	lwip_close( sockfd );
 }
-#endif

@@ -6,12 +6,11 @@
 #ifndef TESTS_UDP_TEST_H_
 #define TESTS_UDP_TEST_H_
 
-#include "settings.h"
+#include "mqtt_client.h"
 
-#if CURRENT_TEST == UDP_TX_BENCHMARK
 /* Exported functions prototypes ---------------------------------------------*/
-void udp_tx_benchmark();
-
-#endif
+void udp_set_up();
+void udp_tx_datahose( osMessageQueueId_t mqtt_queue );
+void udp_destroy();
 
 #endif /* TESTS_UDP_TEST_H_ */
