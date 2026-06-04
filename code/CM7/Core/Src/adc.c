@@ -232,7 +232,7 @@ HAL_StatusTypeDef calc_ADC_temp_reduced_div( int32_t* const result )
 		return HAL_ERROR;
 
 	// get raw adc measurements and calculate Celsius
-	uint16_t* adc_buf = (uint16_t*) latest_adc_buf;
+	uint16_t* const adc_buf = (uint16_t*) latest_adc_buf;
 
 	// calculate constants
 	const uint32_t TEMP_NUM = ( TEMPSENSOR_CAL2_TEMP - TEMPSENSOR_CAL1_TEMP ) * 1000;
@@ -264,7 +264,7 @@ HAL_StatusTypeDef calc_ADC_temp_int( int32_t* const result )
 		return HAL_ERROR;
 
 	// get raw adc measurements and calculate Celsius
-	uint16_t* adc_buf = (uint16_t*) latest_adc_buf;
+	uint16_t* const adc_buf = (uint16_t*) latest_adc_buf;
 
 	// calculate temp in milliC
 	int64_t temp_milli = ( ( ( (int64_t) adc_buf[TEMP_REG] * ( *VREFINT_CAL_ADDR ) ) / adc_buf[VDD_REG] - ( *TEMPSENSOR_CAL1_ADDR ) )
@@ -291,7 +291,7 @@ HAL_StatusTypeDef calc_ADC_temp_float( float* const result )
 		return HAL_ERROR;
 
 	// get raw adc measurements and calculate Celsius
-	uint16_t* adc_buf = (uint16_t*) latest_adc_buf;
+	uint16_t* const adc_buf = (uint16_t*) latest_adc_buf;
 
 	// calculate temp
 	float ratio = (float) adc_buf[TEMP_REG] / (float) adc_buf[VDD_REG];

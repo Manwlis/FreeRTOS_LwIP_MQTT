@@ -258,7 +258,7 @@ err_t mqtt_sub_topic( const char* const topic_name , const osMessageQueueId_t os
  */
 err_t mqtt_unsub_topic( sub_topic_id_t* const topic_id )
 {
-	if( *topic_id < 0 || *topic_id > MQTT_MAX_SUBBED_TOPICS )
+	if( *topic_id < 0 || *topic_id >= MQTT_MAX_SUBBED_TOPICS )
 		return ERR_VAL;
 
 	if( mqtt_data.sub_topics[*topic_id].valid == false )
