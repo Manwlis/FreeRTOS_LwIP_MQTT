@@ -155,7 +155,7 @@ void dump_log_mqtt()
 	taskEXIT_CRITICAL( );
 
 	// send the snapshot through mqtt
-	mqtt_publish_wrapper( mqtt_data.client , MQTT_PUB_LWL_INDEX_ID , metadata , sizeof(metadata) , 1 , 0 , NULL , NULL );
+	mqtt_publish_wrapper( MQTT_PUB_LWL_INDEX_ID , metadata , sizeof(metadata) , 1 , 0 , NULL , NULL );
 
 	int32_t current_sent_size = 0;
 	for( int32_t remaining_data = LWL_BUFFER_SIZE ; remaining_data > 0 ; remaining_data -= current_sent_size )
@@ -164,7 +164,7 @@ void dump_log_mqtt()
 		current_sent_size = ( remaining_data > payload_max_size ) ? payload_max_size : remaining_data ;
 
 		osDelay(5); // mqtt looses data when sending a burst after idling. This small delay seems to fix it.
-		mqtt_publish_wrapper( mqtt_data.client , MQTT_PUB_LWL_DATA_ID , &(lwl_data.buffer[LWL_BUFFER_SIZE - remaining_data]) , current_sent_size , 1 , 0 , NULL , NULL );
+		mqtt_publish_wrapper( MQTT_PUB_LWL_DATA_ID , &(lwl_data.buffer[LWL_BUFFER_SIZE - remaining_data]) , current_sent_size , 1 , 0 , NULL , NULL );
 	}
 }
 #endif

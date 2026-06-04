@@ -19,26 +19,10 @@
 #define MQTT_UNKOWN_TOPIC -1
 
 /* Macros ---------------------------------------------------------*/
+#define mqtt_get_connection_status() (*mqtt_connection_status)
 
 /* Shared Types ---------------------------------------------------------*/
 typedef int32_t sub_topic_id_t;
-
-typedef struct _mqtt_sub_topic_t
-{
-	char name[32];
-	osMessageQueueId_t os_queue_id;
-	bool valid;
-}mqtt_sub_topic_t;
-
-
-typedef struct _mqtt_data_t
-{
-	mqtt_sub_topic_t sub_topics[MQTT_MAX_TOPICS];
-	osMemoryPoolId_t os_memory_pool;
-	mqtt_client_t* client;
-	uint8_t num_topics;
-	bool connected;
-}mqtt_data_t;
 
 // This struct is used to move mqtt messages to the freertos tasks
 typedef struct _mqtt_os_message_t
@@ -52,10 +36,15 @@ typedef struct _mqtt_os_message_t
 void mqtt_init();
 void mqtt_test();
 err_t mqtt_sub_topic( const char* const topic_name , const osMessageQueueId_t os_queue_id , sub_topic_id_t* const topic_id );
-err_t mqtt_unsub_topic( sub_topic_id_t topic_id );
+err_t mqtt_unsub_topic( sub_topic_id_t* const topic_id );
+err_t mqtt_publish_wrapper( const char *topic , const void *payload , u16_t payload_length , u8_t qos , u8_t retain , mqtt_request_cb_t cb , void *arg );
+osStatus_t mqtt_free_message( const mqtt_os_message_t* const message );
+
+/* Exported Variables ---------------------------------------------------------*/
+extern bool* const mqtt_connection_status;
 
 /* Inline Functions ---------------------------------------------------------*/
-inline bool compare_mqtt_payload( const mqtt_os_message_t* const message , const char* const string , bool match_size )
+inline bool compare_mqtt_payload( const mqtt_os_message_t* const restrict message , const char* const restrict string , bool match_size )
 {
 	if( message == NULL || string == NULL )
 		return false;
@@ -66,18 +55,5 @@ inline bool compare_mqtt_payload( const mqtt_os_message_t* const message , const
 		return strncmp( (char*)message->data , string , strlen(string) ) == 0;
 }
 
-
-inline err_t mqtt_publish_wrapper( mqtt_client_t *client , const char *topic , const void *payload , u16_t payload_length , u8_t qos , u8_t retain ,
-                                  mqtt_request_cb_t cb , void *arg )
-{
-	LOCK_TCPIP_CORE();
-	err_t rv = mqtt_publish( client , topic , payload , payload_length , qos , retain , cb , arg );
-	UNLOCK_TCPIP_CORE();
-
-	return rv;
-}
-
-/* Exported Variables ---------------------------------------------------------*/
-extern mqtt_data_t mqtt_data;
 
 #endif /* MQTT_CLIENT_MQTT_CLIENT_H_ */

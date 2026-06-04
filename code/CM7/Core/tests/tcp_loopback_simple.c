@@ -68,10 +68,10 @@ void tcp_simple_loopback( osMessageQueueId_t mqtt_queue )
 		{
 			if( compare_mqtt_payload( mqtt_message , "stop" , true ) )
 			{
-				osMemoryPoolFree( mqtt_data.os_memory_pool , mqtt_message );
+				mqtt_free_message( mqtt_message );
 				return;
 			}
-			osMemoryPoolFree( mqtt_data.os_memory_pool , mqtt_message );
+			mqtt_free_message( mqtt_message );
 		}
 
 		 // check the queue ever 1000 packets

@@ -191,7 +191,7 @@ void StartDefaultTask(void *argument)
 	mqtt_init();
 
 	// connect to mqtt
-	while( mqtt_data.connected != true )
+	while( mqtt_get_connection_status() != true )
 		osDelay( 100 );
 
 	sub_topic_id_t topic_id;
@@ -213,7 +213,7 @@ void StartDefaultTask(void *argument)
 			dump_log_mqtt();
 
 		// free message
-		osMemoryPoolFree( mqtt_data.os_memory_pool , message );
+		mqtt_free_message( message );
 	}
   /* USER CODE END StartDefaultTask */
 }
@@ -230,7 +230,7 @@ void i2c4_task( void* argument )
 	hi2c4_wrapper.task_handle = osThreadGetId();
 
 	// connect to mqtt
-	while(mqtt_data.connected != true )
+	while( mqtt_get_connection_status() != true )
 		osDelay( 100 );
 
 	sub_topic_id_t topic_id;
@@ -303,7 +303,7 @@ void i2c4_task( void* argument )
 			float temp;
 			LIS3DHTR_get_temp( &LIS3DHTR_handle , &temp );
 
-			mqtt_publish_wrapper( mqtt_data.client , MQTT_PUB_LIS3_TEMP_ID , &temp , sizeof( temp ) , 0 , 0 , NULL , NULL );
+			mqtt_publish_wrapper( MQTT_PUB_LIS3_TEMP_ID , &temp , sizeof( temp ) , 0 , 0 , NULL , NULL );
 		}
 		else if( compare_mqtt_payload( message , "get accel" , true ) )
 		{
@@ -317,11 +317,11 @@ void i2c4_task( void* argument )
 			memcpy( &(data[sizeof(x)]) , &(y) , sizeof(y) );
 			memcpy( &(data[sizeof(x)+sizeof(y)]) , &(z) , sizeof(z) );
 
-			mqtt_publish_wrapper( mqtt_data.client , MQTT_PUB_LIS3_ACCEL_ID , data , sizeof( data ) , 0 , 0 , NULL , NULL );
+			mqtt_publish_wrapper( MQTT_PUB_LIS3_ACCEL_ID , data , sizeof( data ) , 0 , 0 , NULL , NULL );
 		}
 
 		// free message
-		osMemoryPoolFree( mqtt_data.os_memory_pool , message );
+		mqtt_free_message( message );
 	}
 	osThreadExit();
 }
@@ -336,7 +336,7 @@ void spi1_task( void* argument )
 	hspi1_wrapper.task_handle  = osThreadGetId();
 
 	// connect to mqtt
-	while(mqtt_data.connected != true )
+	while( mqtt_get_connection_status() != true )
 		osDelay( 100 );
 
 	sub_topic_id_t topic_id;
@@ -358,11 +358,11 @@ void spi1_task( void* argument )
 		{
 			float lux = 0;
 			pmodals_get_lux( &pmodals_handle , &lux );
-			mqtt_publish_wrapper( mqtt_data.client , MQTT_PUB_ALS_LUX_ID , &lux , sizeof( lux ) , 0 , 0 , NULL , NULL );
+			mqtt_publish_wrapper( MQTT_PUB_ALS_LUX_ID , &lux , sizeof( lux ) , 0 , 0 , NULL , NULL );
 		}
 
 		// free message
-		osMemoryPoolFree( mqtt_data.os_memory_pool , message );
+		mqtt_free_message( message );
 	}
 	osThreadExit();
 }
@@ -375,7 +375,7 @@ void adc3_task( void* argument )
 	start_ADC_DMA();
 
 	// connect to mqtt
-	while(mqtt_data.connected != true )
+	while( mqtt_get_connection_status() != true )
 		osDelay( 100 );
 
 	sub_topic_id_t topic_id;
@@ -398,25 +398,25 @@ void adc3_task( void* argument )
 			int32_t temp = 0;
 			calc_ADC_temp_int( &temp );
 
-			mqtt_publish_wrapper( mqtt_data.client , MQTT_PUB_TEMP_INT_ID , &temp , sizeof( temp ) , 0 , 0 , NULL , NULL );
+			mqtt_publish_wrapper( MQTT_PUB_TEMP_INT_ID , &temp , sizeof( temp ) , 0 , 0 , NULL , NULL );
 		}
 		else if( compare_mqtt_payload( message , "reduced" , true ) )
 		{
 			int32_t temp = 0;
 			calc_ADC_temp_reduced_div( &temp );
 
-			mqtt_publish_wrapper( mqtt_data.client , MQTT_PUB_TEMP_INT_ID , &temp , sizeof( temp ) , 0 , 0 , NULL , NULL );
+			mqtt_publish_wrapper( MQTT_PUB_TEMP_INT_ID , &temp , sizeof( temp ) , 0 , 0 , NULL , NULL );
 		}
 		else if( compare_mqtt_payload( message , "float" , true ) )
 		{
 			float temp = 0;
 			calc_ADC_temp_float( &temp );
 
-			mqtt_publish_wrapper( mqtt_data.client , MQTT_PUB_TEMP_FLOAT_ID , &temp , sizeof( temp ) , 0 , 0 , NULL , NULL );
+			mqtt_publish_wrapper( MQTT_PUB_TEMP_FLOAT_ID , &temp , sizeof( temp ) , 0 , 0 , NULL , NULL );
 		}
 
 		// free message
-		osMemoryPoolFree( mqtt_data.os_memory_pool , message );
+		mqtt_free_message( message );
 	}
 	osThreadExit();
 }
@@ -426,9 +426,8 @@ void eth_task( void* argument )
 {
 	UNUSED( argument );
 
-
 	// connect to mqtt
-	while(mqtt_data.connected != true )
+	while( mqtt_get_connection_status() != true )
 		osDelay( 100 );
 
 	sub_topic_id_t topic_id;
@@ -450,7 +449,7 @@ void eth_task( void* argument )
 		memcpy( local_message.data , message->data , MQTT_PAYLOAD_MAX_SIZE );
 		local_message.len = message->len;
 
-		osMemoryPoolFree( mqtt_data.os_memory_pool , message );
+		mqtt_free_message( message );
 
 		if( compare_mqtt_payload( &local_message , "tcp simple" , true ) )
 		{
@@ -470,8 +469,6 @@ void eth_task( void* argument )
 			tcp_multi_loopback( mqtt_queue );
 			tcp_multi_destroy();
 		}
-
-
 	}
 	osThreadExit();
 }

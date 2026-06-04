@@ -17,10 +17,30 @@
 #include "mqtt_client.h"
 #include "lwl.h"
 
-/* Variables ---------------------------------------------------------*/
-// memory pool for the os messages
-mqtt_data_t mqtt_data = { 0 };
+/* Private types ---------------------------------------------------------*/
+typedef struct _mqtt_sub_topic_t
+{
+	char name[32];
+	osMessageQueueId_t os_queue_id;
+	bool valid;
+}mqtt_sub_topic_t;
 
+typedef struct _mqtt_data_t
+{
+	mqtt_sub_topic_t sub_topics[MQTT_MAX_TOPICS];
+	osMemoryPoolId_t os_memory_pool;
+	mqtt_client_t* client;
+	uint8_t num_topics;
+	bool connected;
+}mqtt_data_t;
+
+/* Variables ---------------------------------------------------------*/
+static mqtt_data_t mqtt_data = { 0 };
+
+// These pointers are used to externalize any data required by the user
+bool* const mqtt_connection_status = &(mqtt_data.connected);
+
+// used to pass topic info from mqtt_incoming_publish_cb() to mqtt_incoming_data_cb()
 static volatile int32_t mqtt_sub_topic_idx = MQTT_UNKOWN_TOPIC;
 
 /* Functions ---------------------------------------------------------*/
@@ -171,7 +191,9 @@ void mqtt_init()
 	// try connecting until success
 	for( ; ; )
 	{
+		LOCK_TCPIP_CORE();
 		err_t error = mqtt_client_connect( mqtt_data.client , &ip_addr , MQTT_HOST_PORT , &mqtt_connection_cb , NULL , &client_info );
+		UNLOCK_TCPIP_CORE();
 		if( error == ERR_OK )
 			break;
 	}
@@ -181,7 +203,7 @@ void mqtt_init()
 		osDelay( 10 );
 
 	// announce connection
-	mqtt_publish_wrapper( mqtt_data.client , MQTT_CONNECT_TOPIC , MQTT_CONNECT_PAYLOAD , sizeof( MQTT_CONNECT_PAYLOAD ) , 0 , 0 , NULL , NULL );
+	mqtt_publish_wrapper( MQTT_CONNECT_TOPIC , MQTT_CONNECT_PAYLOAD , sizeof( MQTT_CONNECT_PAYLOAD ) , 0 , 0 , NULL , NULL );
 }
 
 /**
@@ -234,24 +256,61 @@ err_t mqtt_sub_topic( const char* const topic_name , const osMessageQueueId_t os
 
 /**
  * @brief	Unsubs from a mqtt topic
- * @param	topic_id Topic to unsub from
+ * @param	topic_id	Topic to unsub from
  * @retval	ERR_OK if success, error code if failure
  */
-err_t mqtt_unsub_topic( sub_topic_id_t topic_id )
+err_t mqtt_unsub_topic( sub_topic_id_t* const topic_id )
 {
-	if( topic_id < 0 || topic_id > MQTT_MAX_TOPICS )
+	if( *topic_id < 0 || *topic_id > MQTT_MAX_TOPICS )
 		return ERR_VAL;
 
-	if( mqtt_data.sub_topics[topic_id].valid == false )
+	if( mqtt_data.sub_topics[*topic_id].valid == false )
 		return ERR_ALREADY;
 
 	LOCK_TCPIP_CORE();
-	err_t error = mqtt_unsubscribe( mqtt_data.client , mqtt_data.sub_topics[topic_id].name , NULL , NULL );
+	err_t error = mqtt_unsubscribe( mqtt_data.client , mqtt_data.sub_topics[*topic_id].name , NULL , NULL );
+	UNLOCK_TCPIP_CORE();
+	if( error != ERR_OK ) { return error ; }
+
+	mqtt_data.sub_topics[*topic_id].valid = false;
+	*topic_id = -1;
+
+	return ERR_OK;
+}
+
+/**
+ * @brief	Publish function.
+ * @param	topic			Publish topic string
+ * @param	payload			Data to publish (NULL is allowed)
+ * @param	payload_length	Length of payload (0 is allowed)
+ * @param	qos				Quality of service, 0 1 or 2
+ * @param	retain			MQTT retain flag
+ * @param	cb				Callback to call when publish is complete or has timed out
+ * @param	arg				User supplied argument to publish callback
+ * @retval	ERR_OK if success, error code if failure
+ */
+err_t mqtt_publish_wrapper( const char *topic , const void *payload , u16_t payload_length , u8_t qos , u8_t retain , mqtt_request_cb_t cb , void *arg )
+{
+	if( mqtt_data.connected == false )
+		return ERR_CONN;
+
+	LOCK_TCPIP_CORE();
+	err_t rv = mqtt_publish( mqtt_data.client , topic , payload , payload_length , qos , retain , cb , arg );
 	UNLOCK_TCPIP_CORE();
 
-	mqtt_data.sub_topics[topic_id].valid = false;
-	return error;
+	return rv;
 }
+
+/**
+ * @brief	Return an allocated message back to the memory pool
+ * @param	message	Message to be freed
+ * @retval	ERR_OK if success, error code if failure
+ */
+osStatus_t mqtt_free_message( const mqtt_os_message_t* const message )
+{
+	return osMemoryPoolFree( mqtt_data.os_memory_pool , message );
+}
+
 
 /**
  * @brief Publish an mqtt message every ~200ms, going through all sub topics, and containing a counter.

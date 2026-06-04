@@ -94,21 +94,21 @@ void tcp_multi_rx( osMessageQueueId_t mqtt_queue )
 	for( ; ; )
 	{
 		// check for stop command
-		mqtt_os_message_t* message = NULL;
-		osStatus_t status = osMessageQueueGet( mqtt_queue , &message , NULL , 0 );
+		mqtt_os_message_t* mqtt_message = NULL;
+		osStatus_t status = osMessageQueueGet( mqtt_queue , &mqtt_message , NULL , 0 );
 
-		if( status == osOK && message != NULL )
+		if( status == osOK && mqtt_message != NULL )
 		{
-			if( compare_mqtt_payload( message , "stop" , true ) )
+			if( compare_mqtt_payload( mqtt_message , "stop" , true ) )
 			{
 				// connection closed, send message to the tx task
 				network_message->type = CLOSED;
 				osMessageQueuePut( network_message_rx_to_tx , &network_message , msg_prio , osWaitForever );
 
-				osMemoryPoolFree( mqtt_data.os_memory_pool , message );
+				mqtt_free_message( mqtt_message );
 				return;
 			}
-			osMemoryPoolFree( mqtt_data.os_memory_pool , message );
+			mqtt_free_message( mqtt_message );
 		}
 
 		for( int i = 0 ; i < 1000 ; i++ )
