@@ -26,8 +26,6 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include <stdbool.h>
-#include <string.h>
 #include "settings.h"
 #include "stm32h7xx_it.h" // for the RUN_TIME_STATS
 
@@ -66,12 +64,10 @@
 /* USER CODE BEGIN Variables */
 const osThreadAttr_t i2c4_task_attributes = { .name = "i2c4_task" , .stack_size = 2048 , .priority = (osPriority_t) osPriorityNormal , };
 const osThreadAttr_t spi1_task_attributes = { .name = "spi1_task" , .stack_size = 2048 , .priority = (osPriority_t) osPriorityNormal , };
-const osThreadAttr_t adc3_task_attributes = { .name = "adc3_task" , .stack_size = 2048 , .priority = (osPriority_t) osPriorityNormal , };
 const osThreadAttr_t eth_task_attributes = { .name = "eth_task" , .stack_size = 2048 , .priority = (osPriority_t) osPriorityNormal , };
 
 osThreadId_t i2c4_task_handle;
 osThreadId_t spi1_task_handle;
-osThreadId_t adc3_task_handle;
 osThreadId_t eth_task_handle;
 
 /* USER CODE END Variables */
@@ -91,7 +87,6 @@ void StartTxTask( void* argument );
 
 void i2c4_task( void* argument );
 void spi1_task( void* argument );
-void adc3_task( void* argument );
 void eth_task( void* argument );
 /* USER CODE END FunctionPrototypes */
 
@@ -163,7 +158,6 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN RTOS_THREADS */
 	i2c4_task_handle = osThreadNew( i2c4_task , NULL, &i2c4_task_attributes);
 	spi1_task_handle = osThreadNew( spi1_task , NULL, &spi1_task_attributes);
-	adc3_task_handle = osThreadNew( adc3_task , NULL, &adc3_task_attributes);
 	eth_task_handle = osThreadNew( eth_task , NULL, &eth_task_attributes);
   /* USER CODE END RTOS_THREADS */
 
@@ -188,6 +182,7 @@ void StartDefaultTask(void *argument)
 	UNUSED( argument );
 
 	lwl_init();
+	start_ADC_DMA();
 	mqtt_init();
 
 	// connect to mqtt
@@ -197,10 +192,12 @@ void StartDefaultTask(void *argument)
 	// announce connection
 	mqtt_publish_wrapper( MQTT_CONNECT_TOPIC , MQTT_CONNECT_PAYLOAD , sizeof( MQTT_CONNECT_PAYLOAD ) , 0 , 0 , NULL , NULL );
 
-	sub_topic_id_t topic_id;
+	sub_topic_id_t lwl_topic_id;
+	sub_topic_id_t temp_topic_id;
 	osMessageQueueId_t mqtt_queue = osMessageQueueNew( MQTT_OS_QUEUE_NUM_ELEMENTS , sizeof(mqtt_os_message_t*) , NULL );
-	vQueueAddToRegistry( mqtt_queue , "mqtt_lwl" );
-	mqtt_sub_topic( MQTT_SUB_LWL_ID , mqtt_queue , &topic_id );
+	vQueueAddToRegistry( mqtt_queue , "mqtt_default_task" );
+	mqtt_sub_topic( MQTT_SUB_LWL_ID , mqtt_queue , &lwl_topic_id );
+	mqtt_sub_topic( MQTT_SUB_TEMP_ID , mqtt_queue , &temp_topic_id );
 
 	while(1)
 	{
@@ -212,8 +209,29 @@ void StartDefaultTask(void *argument)
 			continue; // did we loose a message here. Should this be logged? Can status be not OK but message pointer valid? Then we have memory leak.
 
 		// consume message
-		if( compare_mqtt_payload( message , "dump" , true ) )
+		if( message->topic_id == lwl_topic_id && compare_mqtt_payload( message , "dump" , true ) )
 			dump_log_mqtt();
+		else if( message->topic_id == temp_topic_id && compare_mqtt_payload( message , "int" , true ) )
+		{
+			int32_t temp = 0;
+			calc_ADC_temp_int( &temp );
+
+			mqtt_publish_wrapper( MQTT_PUB_TEMP_INT_ID , &temp , sizeof( temp ) , 0 , 0 , NULL , NULL );
+		}
+		else if( message->topic_id == temp_topic_id && compare_mqtt_payload( message , "reduced" , true ) )
+		{
+			int32_t temp = 0;
+			calc_ADC_temp_reduced_div( &temp );
+
+			mqtt_publish_wrapper( MQTT_PUB_TEMP_INT_ID , &temp , sizeof( temp ) , 0 , 0 , NULL , NULL );
+		}
+		else if( message->topic_id == temp_topic_id && compare_mqtt_payload( message , "float" , true ) )
+		{
+			float temp = 0;
+			calc_ADC_temp_float( &temp );
+
+			mqtt_publish_wrapper( MQTT_PUB_TEMP_INT_ID , &temp , sizeof( temp ) , 0 , 0 , NULL , NULL );
+		}
 
 		// free message
 		mqtt_free_message( message );
@@ -362,60 +380,6 @@ void spi1_task( void* argument )
 			float lux = 0;
 			pmodals_get_lux( &pmodals_handle , &lux );
 			mqtt_publish_wrapper( MQTT_PUB_ALS_LUX_ID , &lux , sizeof( lux ) , 0 , 0 , NULL , NULL );
-		}
-
-		// free message
-		mqtt_free_message( message );
-	}
-	osThreadExit();
-}
-
-void adc3_task( void* argument )
-{
-	UNUSED( argument );
-
-	// Init peripheral and devices
-	start_ADC_DMA();
-
-	// connect to mqtt
-	while( mqtt_get_connection_status() != true )
-		osDelay( 100 );
-
-	sub_topic_id_t topic_id;
-	osMessageQueueId_t mqtt_queue = osMessageQueueNew( MQTT_OS_QUEUE_NUM_ELEMENTS , sizeof(mqtt_os_message_t*) , NULL );
-	vQueueAddToRegistry( mqtt_queue , "mqtt_adc3" );
-	mqtt_sub_topic( MQTT_SUB_TEMP_ID , mqtt_queue , &topic_id );
-
-	while(1)
-	{
-		// wait for queue message
-		mqtt_os_message_t* message = NULL;
-		osStatus_t status = osMessageQueueGet( mqtt_queue , &message , NULL , osWaitForever );
-
-		if( message == NULL || status != osOK )
-			continue; // did we loose a message here. Should this be logged? Can status be not OK but message pointer valid? Then we have memory leak.
-
-		// consume message
-		if( compare_mqtt_payload( message , "int" , true ) )
-		{
-			int32_t temp = 0;
-			calc_ADC_temp_int( &temp );
-
-			mqtt_publish_wrapper( MQTT_PUB_TEMP_INT_ID , &temp , sizeof( temp ) , 0 , 0 , NULL , NULL );
-		}
-		else if( compare_mqtt_payload( message , "reduced" , true ) )
-		{
-			int32_t temp = 0;
-			calc_ADC_temp_reduced_div( &temp );
-
-			mqtt_publish_wrapper( MQTT_PUB_TEMP_INT_ID , &temp , sizeof( temp ) , 0 , 0 , NULL , NULL );
-		}
-		else if( compare_mqtt_payload( message , "float" , true ) )
-		{
-			float temp = 0;
-			calc_ADC_temp_float( &temp );
-
-			mqtt_publish_wrapper( MQTT_PUB_TEMP_FLOAT_ID , &temp , sizeof( temp ) , 0 , 0 , NULL , NULL );
 		}
 
 		// free message

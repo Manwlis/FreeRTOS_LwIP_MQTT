@@ -160,20 +160,24 @@ static void mqtt_connection_cb( mqtt_client_t* client , void* arg , mqtt_connect
 err_t mqtt_init()
 {
 	// create OS infrastructure
-	if( mqtt_data.os_memory_pool != NULL )
+	if( mqtt_data.os_memory_pool == NULL )
 		mqtt_data.os_memory_pool = osMemoryPoolNew( MQTT_OS_QUEUE_NUM_ELEMENTS * MQTT_MAX_SUBBED_TOPICS , sizeof(mqtt_os_message_t) , NULL );
 
-	assert( mqtt_data.os_memory_pool == NULL );
+	assert( mqtt_data.os_memory_pool != NULL );
 
 	mqtt_data.num_topics = 0;
 	for( uint32_t i = 0 ; i < MQTT_MAX_SUBBED_TOPICS ; i++ )
 		mqtt_data.sub_topics[i].valid = false;
 
 	// create mqtt connection info
-	if( mqtt_data.client != NULL )
+	if( mqtt_data.client == NULL )
+	{
+		LOCK_TCPIP_CORE();
 		mqtt_data.client = mqtt_client_new();
+		UNLOCK_TCPIP_CORE();
+	}
 
-	assert( mqtt_data.client == NULL );
+	assert( mqtt_data.client != NULL );
 
 	ip_addr_t ip_addr;
 	IP4_ADDR( &ip_addr , ETH_SERVER_IP_1 , ETH_SERVER_IP_2 , ETH_SERVER_IP_3 , ETH_SERVER_IP_4 );
