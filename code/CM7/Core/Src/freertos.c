@@ -194,6 +194,9 @@ void StartDefaultTask(void *argument)
 	while( mqtt_get_connection_status() != true )
 		osDelay( 100 );
 
+	// announce connection
+	mqtt_publish_wrapper( MQTT_CONNECT_TOPIC , MQTT_CONNECT_PAYLOAD , sizeof( MQTT_CONNECT_PAYLOAD ) , 0 , 0 , NULL , NULL );
+
 	sub_topic_id_t topic_id;
 	osMessageQueueId_t mqtt_queue = osMessageQueueNew( MQTT_OS_QUEUE_NUM_ELEMENTS , sizeof(mqtt_os_message_t*) , NULL );
 	vQueueAddToRegistry( mqtt_queue , "mqtt_lwl" );

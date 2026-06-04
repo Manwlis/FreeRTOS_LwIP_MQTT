@@ -33,7 +33,7 @@ typedef struct _mqtt_os_message_t
 }mqtt_os_message_t;
 
 /* Exported Functions ---------------------------------------------------------*/
-void mqtt_init();
+err_t mqtt_init();
 void mqtt_test();
 err_t mqtt_sub_topic( const char* const topic_name , const osMessageQueueId_t os_queue_id , sub_topic_id_t* const topic_id );
 err_t mqtt_unsub_topic( sub_topic_id_t* const topic_id );
