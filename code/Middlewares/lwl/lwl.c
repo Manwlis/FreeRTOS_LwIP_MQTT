@@ -163,7 +163,7 @@ void dump_log_mqtt()
 		const int32_t payload_max_size = MQTT_OUTPUT_RINGBUF_SIZE - sizeof(MQTT_PUB_LWL_DATA_ID) - 8; // dont know why -8. According to mqtt, largest outgoing publish message = topic+payloads
 		current_sent_size = ( remaining_data > payload_max_size ) ? payload_max_size : remaining_data ;
 
-		osDelay(5); // mqtt looses data when sending a burst after idling. This small delay seems to fix it.
+		osDelay( 1 ); // mqtt looses data when sending a burst after idling. This small delay seems to fix it.
 		mqtt_publish_wrapper( MQTT_PUB_LWL_DATA_ID , &(lwl_data.buffer[LWL_BUFFER_SIZE - remaining_data]) , current_sent_size , 1 , 0 , NULL , NULL );
 	}
 }
