@@ -211,3 +211,8 @@ server.py  # TCP loopback server
 * CMSIS-RTOS 2.1.3
 * LwIP 2.2.1
 * mosquitto 2.1.2
+
+
+![The board.](./docs/the_board.jpg "The board")
+
+*The board*
