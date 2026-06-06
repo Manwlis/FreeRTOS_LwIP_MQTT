@@ -53,6 +53,8 @@ void lwl_enter_record( uint8_t module_id , char functionality_id[] , const char*
 	if( lwl_driver.is_initialized == false )
 		return;
 
+	taskENTER_CRITICAL( );
+
 	lwl_data.buffer[lwl_data.next_entry_index] = module_id;
 	lwl_data.next_entry_index = ( lwl_data.next_entry_index + 1 ) & ( LWL_BUFFER_SIZE - 1 );
 //	If buffer size is not power of 2 then
@@ -135,6 +137,8 @@ void lwl_enter_record( uint8_t module_id , char functionality_id[] , const char*
 				assert( 0 );
 		}
 	}
+
+	taskEXIT_CRITICAL( );
 }
 
 
