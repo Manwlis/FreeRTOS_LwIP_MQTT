@@ -14,6 +14,7 @@
 #include "mqtt_client.h"
 
 /* Defines -----------------------------------------------------------*/
+#define TX_TASK_EXITED_FLAG 0x0001
 
 /* Typedefs -----------------------------------------------------------*/
 typedef struct
@@ -34,18 +35,21 @@ static osThreadId_t tx_task_handle;
 
 static osMessageQueueId_t network_message_free;
 static osMessageQueueId_t network_message_rx_to_tx;
-static network_message_t network_message_pool[NUM_NETWORK_MESSAGES]; // using osMemoryPool would be more idiomatic and safe
+
+static osMemoryPoolId_t os_memory_pool;
 
 /* Functions ---------------------------------------------------------*/
 void set_up_queues()
 {
+	os_memory_pool = osMemoryPoolNew( NUM_NETWORK_MESSAGES , sizeof(network_message_t) , NULL );
+
 	network_message_free = osMessageQueueNew( NUM_NETWORK_MESSAGES , sizeof(network_message_t*) , NULL );
 	network_message_rx_to_tx = osMessageQueueNew( NUM_NETWORK_MESSAGES , sizeof(network_message_t*) , NULL );
 
 	for( int i = 0 ; i < NUM_NETWORK_MESSAGES ; i++ )
 	{
-		network_message_t* message = &network_message_pool[i];
-		osMessageQueuePut( network_message_free , &message , 0 , 0 ); // this calls xQueueSendToBack, maybe we need xQueueSend?
+		network_message_t* message = osMemoryPoolAlloc( os_memory_pool , 0 );
+		osMessageQueuePut( network_message_free , &message , 0 , 0 );
 	}
 
 	// So we can monitor them with the debugger
@@ -156,8 +160,7 @@ void tcp_multi_tx()
 
 		if( network_message->type == CLOSED )
 		{
-			// connection closed, return message to queue
-			osMessageQueuePut( network_message_free , &network_message , msg_prio , 0 );
+			osThreadFlagsSet( rx_task_handle , TX_TASK_EXITED_FLAG );
 			osThreadExit();
 		}
 
@@ -170,8 +173,7 @@ void tcp_multi_tx()
 
 			if( ret <= 0 )
 			{
-				// connection closed, return message to queue
-				osMessageQueuePut( network_message_free , &network_message , msg_prio , 0 );
+				osThreadFlagsSet( rx_task_handle , TX_TASK_EXITED_FLAG );
 				osThreadExit();
 			}
 
@@ -183,7 +185,6 @@ void tcp_multi_tx()
 	}
 }
 
-
 void tcp_multi_loopback( osMessageQueueId_t mqtt_queue )
 {
 	rx_task_handle = osThreadGetId();
@@ -194,13 +195,19 @@ void tcp_multi_loopback( osMessageQueueId_t mqtt_queue )
 	tcp_multi_rx( mqtt_queue );
 }
 
-
 void tcp_multi_destroy()
 {
 	lwip_shutdown( sockfd , SHUT_RDWR );
 	lwip_close( sockfd );
 	sockfd = -1;
 
-	osMessageQueueDelete( network_message_free );
-	osMessageQueueDelete( network_message_rx_to_tx );
+	osThreadFlagsWait( TX_TASK_EXITED_FLAG , 0 , osWaitForever );
+
+	vQueueUnregisterQueue( network_message_free );
+	vQueueUnregisterQueue( network_message_rx_to_tx );
+
+	assert( osMessageQueueDelete( network_message_free ) );
+	assert( osMessageQueueDelete( network_message_rx_to_tx ) );
+
+	assert(osMemoryPoolDelete( os_memory_pool ) );
 }

@@ -1,3 +1,1 @@
 handle mqtt disconnections
-protect lwl buffer writing
-make tcp multitask test use os data pool instead of raw array.
