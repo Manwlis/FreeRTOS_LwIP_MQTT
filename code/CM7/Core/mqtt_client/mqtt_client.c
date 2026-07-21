@@ -15,7 +15,12 @@
 #include "task.h" // taskENTER_CRITICAL()
 
 #include "mqtt_client.h"
+
+#if __has_include("lwl.h")
 #include "lwl.h"
+#else
+#define lwl_enter_record(...)
+#endif
 
 /* Private types ---------------------------------------------------------*/
 typedef struct _mqtt_sub_topic_t
