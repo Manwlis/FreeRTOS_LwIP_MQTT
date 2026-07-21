@@ -81,10 +81,7 @@ const osThreadAttr_t defaultTask_attributes = {
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
-#if CURRENT_TEST == TCP_LOOPBACK_MULTITASK
 void StartTxTask( void* argument );
-#endif
-
 void i2c4_task( void* argument );
 void spi1_task( void* argument );
 void eth_task( void* argument );
